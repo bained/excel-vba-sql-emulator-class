@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Excel VBA SQL Emulator Class</title>
+    <style>
+        :root {
+            --blue: #1f4e79;
+            --blue-light: #eaf3fb;
+            --border: #c9d8e5;
+            --text: #202124;
+            --muted: #5f6b75;
+            --green: #2f6f44;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--text);
+            background: #f7f9fb;
+            font-family: "Segoe UI", Arial, sans-serif;
+            line-height: 1.55;
+        }
+        header {
+            color: white;
+            background: linear-gradient(135deg, #1f4e79, #3478ad);
+            padding: 4rem 1.25rem 3.5rem;
+        }
+        .container { max-width: 1100px; margin: 0 auto; }
+        header h1 { margin: 0 0 .75rem; font-size: clamp(2rem, 5vw, 3.4rem); }
+        header p { max-width: 780px; margin: 0; font-size: 1.15rem; }
+        main { padding: 2rem 1.25rem 4rem; }
+        section, .card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.35rem 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 7px rgba(31, 78, 121, .06);
+        }
+        h2 { color: var(--blue); margin-top: 0; }
+        h3 { color: #365f91; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; }
+        .card { margin: 0; }
+        .card h3 { margin-top: 0; }
+        a { color: #145a86; font-weight: 600; }
+        .button {
+            display: inline-block;
+            margin: .5rem .5rem 0 0;
+            padding: .65rem 1rem;
+            border-radius: 5px;
+            color: white;
+            background: var(--green);
+            text-decoration: none;
+        }
+        .button.secondary { background: #365f91; }
+        code { font-family: Consolas, monospace; background: #eef2f5; padding: .1rem .3rem; border-radius: 3px; }
+        pre { overflow-x: auto; padding: 1rem; border-radius: 5px; background: #f1f4f7; border: 1px solid var(--border); }
+        footer { color: var(--muted); text-align: center; padding: 1.5rem; font-size: .9rem; }
+        .note { padding: .8rem 1rem; border-left: 4px solid #d39e00; background: #fff8dc; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Excel VBA SQL Emulator Class</h1>
+            <p>A lightweight, in-memory SQL-like query engine and table-access layer for standard Excel VBA.</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <section>
+            <h2>What is this project?</h2>
+            <p>
+                This project provides two pure-VBA class modules for working with tabular Excel data in memory.
+                <code>SqlQuery</code> provides a fluent query API, while <code>SqlTable</code> provides convenient
+                direct table access and lookup methods.
+            </p>
+            <p class="note">
+                The library does not parse SQL text. The SQL shown in the documentation is a conceptual equivalent
+                of the executable VBA API.
+            </p>
+        </section>
+
+        <section>
+            <h2>Documentation</h2>
+            <div class="grid">
+                <article class="card">
+                    <h3>SqlQuery examples</h3>
+                    <p>Complete copy-and-paste examples for filtering, aliases, typed conversion, joins, paging, and aggregates.</p>
+                    <a class="button" href="SqlQuery_examples.html">Open examples</a>
+                </article>
+                <article class="card">
+                    <h3>SqlTable examples</h3>
+                    <p>Complete examples for opening a table, reading cells and rows, finding records, and creating queries.</p>
+                    <a class="button" href="SqlTable_examples.html">Open examples</a>
+                </article>
+                <article class="card">
+                    <h3>SqlQuery API manual</h3>
+                    <p>Reference documentation for every public <code>SqlQuery</code> method.</p>
+                    <a class="button secondary" href="sqlQuery_manual.html">Open manual</a>
+                </article>
+                <article class="card">
+                    <h3>SqlTable API manual</h3>
+                    <p>Reference documentation for every public <code>SqlTable</code> method and property.</p>
+                    <a class="button secondary" href="SqlTable_manual.html">Open manual</a>
+                </article>
+            </div>
+        </section>
+
+        <section>
+            <h2>Quick start</h2>
+            <p>Import <code>SqlQuery.cls</code> into an Excel VBA project, then use the fluent API:</p>
+            <pre><code>Dim query As SqlQuery
+Set query = New SqlQuery
+Set query = query.LoadRange( _
+    ThisWorkbook.Worksheets("Employees").Range("A1:E13"))
+Set query = query.SelectColumns("Name", "Salary")
+Set query = query.Where("Department", "=", "IT")
+Set query = query.OrderBy("Salary", "DESC")
+query.WriteToRange ThisWorkbook.Worksheets("Results").Range("A1")</code></pre>
+            <a class="button" href="https://github.com/bained/excel-vba-sql-emulator-class">View repository on GitHub</a>
+        </section>
+
+        <section>
+            <h2>Supported operations</h2>
+            <div class="grid">
+                <div class="card"><h3>Querying</h3><p><code>SELECT</code>-style projection, aliases, <code>WHERE</code>, <code>LIKE</code>, <code>IN</code>, NULL predicates, and typed conversion.</p></div>
+                <div class="card"><h3>Data shaping</h3><p><code>DISTINCT</code>, multi-column ordering, <code>LIMIT</code>, <code>OFFSET</code>, <code>INNER JOIN</code>, and <code>LEFT JOIN</code>.</p></div>
+                <div class="card"><h3>Analytics</h3><p><code>GROUP BY</code>, <code>COUNT</code>, <code>SUM</code>, <code>AVG</code>, <code>MIN</code>, and <code>MAX</code>.</p></div>
+                <div class="card"><h3>Pure VBA</h3><p>No external DLLs, ActiveX controls, or mandatory third-party references.</p></div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        Excel VBA SQL Emulator Class · Documentation hosted with GitHub Pages
+    </footer>
+</body>
+</html>
