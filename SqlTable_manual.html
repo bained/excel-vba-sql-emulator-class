@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SqlTable Class Manual</title>
+<style>
+body { font-family: Segoe UI, Arial, sans-serif; line-height: 1.5; max-width: 1100px; margin: 2rem auto; padding: 0 1rem; color: #202124; }
+h1, h2 { color: #1f4e79; } h2 { border-bottom: 2px solid #d9eaf7; padding-bottom: .35rem; margin-top: 2.5rem; }
+nav { background: #eef6fc; border: 1px solid #c7ddec; padding: 1rem 1.4rem; border-radius: 6px; }
+nav ul { columns: 3; } nav a { color: #145a86; text-decoration: none; }
+pre { background: #f5f7f9; border: 1px solid #d6dde5; border-radius: 5px; padding: 1rem; overflow: auto; }
+code { font-family: Consolas, monospace; } .note { background: #fff8dc; border-left: 4px solid #e4b400; padding: .7rem 1rem; }
+.signature { background: #eef6fc; padding: .6rem; border-left: 4px solid #5b9b5b; font-family: Consolas, monospace; }
+.back { font-size: .9rem; }
+</style>
+</head>
+<body>
+<h1>SqlTable Class Manual</h1>
+<p><strong>Purpose:</strong> simple table access and repository-style convenience methods built on top of <code>SqlQuery</code>.</p>
+<div class="note"><strong>Design:</strong> <code>SqlTable</code> reads one in-memory table. Use <code>Query</code> for filtering, sorting, joins, grouping, and output. SQL below is conceptual because the library does not parse SQL text.</div>
+<h2 id="contents">Contents</h2>
+<nav><ul>
+<li><a href="#openrange">OpenRange</a></li><li><a href="#openarray">OpenArray</a></li><li><a href="#headercount">HeaderCount</a></li><li><a href="#rowcount">RowCount</a></li><li><a href="#columncount">ColumnCount</a></li><li><a href="#hascolumn">HasColumn</a></li><li><a href="#getcell">GetCell</a></li><li><a href="#getrowarray">GetRowArray</a></li><li><a href="#getrowdictionary">GetRowDictionary</a></li><li><a href="#getcolumn">GetColumn</a></li><li><a href="#getall">GetAll</a></li><li><a href="#query">Query</a></li><li><a href="#findfirst">FindFirst</a></li><li><a href="#findall">FindAll</a></li><li><a href="#count">Count</a></li><li><a href="#exists">Exists</a></li>
+</ul></nav>
+<h2 id="overview">Overview and row indexing</h2>
+<p>The source first row is the header. Public row indexes are <strong>1-based data-row indexes</strong>; the header is not counted. For <code>Employees!A1:E13</code>, row 1 is Ivan and row 12 is Viktor.</p>
+<pre><code>Dim employees As SqlTable
+Set employees = New SqlTable
+Set employees = employees.OpenRange(Worksheets("Employees").Range("A1:E13"))</code></pre>
+<p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="openrange">OpenRange</h2><p class="signature">Public Function OpenRange(ByVal sourceRange As Range) As SqlTable</p><p>Loads a worksheet range and treats its first row as headers.</p><pre><code>Set employees = employees.OpenRange(Worksheets("Employees").Range("A1:E13"))</code></pre><p><strong>SQL:</strong> <code>FROM Employees</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="openarray">OpenArray</h2><p class="signature">Public Function OpenArray(ByRef sourceArray As Variant) As SqlTable</p><p>Loads a 2D Variant array with a header row.</p><pre><code>source = Worksheets("Employees").Range("A1:E13").Value2
+Set employees = employees.OpenArray(source)</code></pre><p><strong>SQL:</strong> an in-memory table source.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="headercount">HeaderCount</h2><p class="signature">Public Property Get HeaderCount() As Long</p><p>Returns the number of header fields. It equals <code>ColumnCount</code>.</p><pre><code>Debug.Print employees.HeaderCount</code></pre><p><strong>SQL:</strong> metadata, with no direct SQL result-set equivalent.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="rowcount">RowCount</h2><p class="signature">Public Property Get RowCount() As Long</p><p>Returns the number of data rows, excluding the header.</p><pre><code>Debug.Print employees.RowCount ' 12 for Employees!A1:E13</code></pre><p><strong>SQL:</strong> <code>SELECT COUNT(*) FROM Employees</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="columncount">ColumnCount</h2><p class="signature">Public Property Get ColumnCount() As Long</p><p>Returns the number of columns.</p><pre><code>Debug.Print employees.ColumnCount ' 5</code></pre><p><strong>SQL:</strong> table metadata.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="hascolumn">HasColumn</h2><p class="signature">Public Function HasColumn(ByVal column As Variant) As Boolean</p><p>Checks a column by name or 1-based index. Header matching is case-insensitive.</p><pre><code>If employees.HasColumn("Salary") Then Debug.Print "Available"
+If employees.HasColumn(4) Then Debug.Print "Column 4 is available"</code></pre><p><strong>SQL:</strong> schema metadata check.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="getcell">GetCell</h2><p class="signature">Public Function GetCell(ByVal rowIndex As Long, ByVal column As Variant) As Variant</p><p>Returns one value by data-row index and column name or index.</p><pre><code>Debug.Print employees.GetCell(1, "Name")
+Debug.Print employees.GetCell(5, 4)</code></pre><p><strong>SQL:</strong> <code>SELECT Name FROM Employees OFFSET ... LIMIT 1</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="getrowarray">GetRowArray</h2><p class="signature">Public Function GetRowArray(ByVal rowIndex As Long) As Variant</p><p>Returns one data row as a 1-based one-dimensional Variant array, without headers.</p><pre><code>rowValues = employees.GetRowArray(1)
+Debug.Print rowValues(2) ' Name</code></pre><p><strong>SQL:</strong> <code>SELECT * FROM Employees ... LIMIT 1</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="getrowdictionary">GetRowDictionary</h2><p class="signature">Public Function GetRowDictionary(ByVal rowIndex As Long) As Object</p><p>Returns one data row as a late-bound <code>Scripting.Dictionary</code>, keyed by header.</p><pre><code>Dim row As Object
+Set row = employees.GetRowDictionary(1)
+Debug.Print row("Name"), row("Salary")</code></pre><p><strong>SQL:</strong> a single result row mapped to a client-side object.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="getcolumn">GetColumn</h2><p class="signature">Public Function GetColumn(ByVal column As Variant) As Variant</p><p>Returns a column as a 1-based array without the header.</p><pre><code>salaries = employees.GetColumn("Salary")
+Debug.Print salaries(1)</code></pre><p><strong>SQL:</strong> <code>SELECT Salary FROM Employees</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="getall">GetAll</h2><p class="signature">Public Function GetAll() As Variant</p><p>Returns the complete copied 2D source array, including the header row.</p><pre><code>allData = employees.GetAll()</code></pre><p><strong>SQL:</strong> <code>SELECT * FROM Employees</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="query">Query</h2><p class="signature">Public Function Query() As SqlQuery</p><p>Creates a new <code>SqlQuery</code> loaded with the table data. The table remains unchanged.</p><pre><code>Dim query As SqlQuery
+Set query = employees.Query()
+Set query = query.Where("Department", "=", "IT")
+query.WriteToRange Worksheets("Results").Range("A1")</code></pre><p><strong>SQL:</strong> <code>SELECT * FROM Employees WHERE Department = 'IT'</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="findfirst">FindFirst</h2><p class="signature">Public Function FindFirst(field, comparisonOperator, expectedValue) As Object</p><p>Returns the first matching row dictionary, or <code>Nothing</code> when there is no match.</p><pre><code>Set row = employees.FindFirst("EmployeeId", "=", 5)
+If Not row Is Nothing Then Debug.Print row("Name")</code></pre><p><strong>SQL:</strong> <code>SELECT * FROM Employees WHERE EmployeeId = 5 LIMIT 1</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="findall">FindAll</h2><p class="signature">Public Function FindAll(field, comparisonOperator, expectedValue) As Collection</p><p>Returns a Collection of row dictionaries for all matching rows.</p><pre><code>Set matches = employees.FindAll("Department", "=", "IT")
+For Each row In matches: Debug.Print row("Name"): Next row</code></pre><p><strong>SQL:</strong> <code>SELECT * FROM Employees WHERE Department = 'IT'</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="count">Count</h2><p class="signature">Public Function Count() As Long</p><p>Returns the number of data rows in the opened table.</p><pre><code>Debug.Print employees.Count</code></pre><p><strong>SQL:</strong> <code>SELECT COUNT(*) FROM Employees</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="exists">Exists</h2><p class="signature">Public Function Exists(field, comparisonOperator, expectedValue) As Boolean</p><p>Returns <code>True</code> when at least one row matches.</p><pre><code>If employees.Exists("Name", "=", "Viktor") Then
+    Debug.Print "Viktor exists"
+End If</code></pre><p><strong>SQL:</strong> <code>SELECT EXISTS(SELECT 1 FROM Employees WHERE Name = 'Viktor')</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2>Relationship to SqlQuery</h2><p><code>SqlTable</code> is for direct table access. <code>SqlQuery</code> performs joins, filtering, projection, grouping, ordering, paging, and writes result sets to Excel. The recommended flow is:</p><pre><code>SqlTable → Query() → SqlQuery → ToArray()/WriteToRange()</code></pre>
+</body></html>

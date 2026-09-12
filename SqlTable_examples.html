@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SqlTable Complete Examples</title>
+<style>
+body{font-family:Segoe UI,Arial,sans-serif;line-height:1.5;max-width:1120px;margin:2rem auto;padding:0 1rem;color:#202124}h1,h2,h3{color:#1f4e79}h2{border-bottom:2px solid #d9eaf7;padding-bottom:.35rem;margin-top:2.7rem}nav{background:#eef6fc;border:1px solid #c7ddec;border-radius:6px;padding:1rem 1.4rem}nav ul{columns:2}nav a{color:#145a86;text-decoration:none}pre{background:#f5f7f9;border:1px solid #d6dde5;border-radius:5px;padding:1rem;overflow:auto}code{font-family:Consolas,monospace}.note{background:#fff8dc;border-left:4px solid #e4b400;padding:.7rem 1rem}.result{background:#eef8ee;border-left:4px solid #5b9b5b;padding:.7rem 1rem}.top{font-size:.9rem}
+</style></head><body>
+<h1>SqlTable: Complete Copy-and-Paste Examples</h1>
+<p>This tutorial uses <code>Employees!A1:E13</code>, <code>Departments!A1:D5</code>, and <code>Results</code>.</p>
+<div class="note"><strong>Before you start:</strong> import both <code>SqlTable.cls</code> and <code>SqlQuery.cls</code>. Save as <code>.xlsm</code>. The examples use late-bound dictionaries, so no extra reference is required.</div>
+<h2 id="contents">Contents</h2><nav><ul><li><a href="#data">Workbook data</a></li><li><a href="#general">General Examples</a></li><li><a href="#open">1. Open and inspect a table</a></li><li><a href="#read">2. Read cells, rows and columns</a></li><li><a href="#find">3. Find rows and test existence</a></li><li><a href="#query">4. Convert SqlTable to SqlQuery</a></li><li><a href="#methods">Public Method Examples</a></li><li><a href="#m-openrange">OpenRange</a></li><li><a href="#m-openarray">OpenArray</a></li><li><a href="#m-headercount">HeaderCount</a></li><li><a href="#m-rowcount">RowCount</a></li><li><a href="#m-columncount">ColumnCount</a></li><li><a href="#m-hascolumn">HasColumn</a></li><li><a href="#m-getcell">GetCell</a></li><li><a href="#m-getrowarray">GetRowArray</a></li><li><a href="#m-getrowdictionary">GetRowDictionary</a></li><li><a href="#m-getcolumn">GetColumn</a></li><li><a href="#m-getall">GetAll</a></li><li><a href="#m-query">Query</a></li><li><a href="#m-findfirst">FindFirst</a></li><li><a href="#m-findall">FindAll</a></li><li><a href="#m-count">Count</a></li><li><a href="#m-exists">Exists</a></li></ul></nav>
+<h2 id="data">Workbook data</h2><p>The examples use these exact source tables.</p>
+<h3>Employees!A1:E13</h3><table><thead><tr><th>EmployeeId</th><th>Name</th><th>Department</th><th>Salary</th><th>Active</th></tr></thead><tbody><tr><td>1</td><td>Ivan</td><td>IT</td><td>3500</td><td>True</td></tr><tr><td>2</td><td>Georgi</td><td>IT</td><td>2500</td><td>True</td></tr><tr><td>3</td><td>Maria</td><td>HR</td><td>4000</td><td>True</td></tr><tr><td>4</td><td>Petar</td><td>Finance</td><td>3000</td><td>True</td></tr><tr><td>5</td><td>Elena</td><td>IT</td><td>4200</td><td>True</td></tr><tr><td>6</td><td>Emilia</td><td>HR</td><td>2800</td><td>False</td></tr><tr><td>7</td><td>Stefan</td><td>IT</td><td>1900</td><td>True</td></tr><tr><td>8</td><td>Emil</td><td>IT</td><td>2100</td><td>True</td></tr><tr><td>9</td><td>Anna</td><td>Legal</td><td>not-a-number</td><td>True</td></tr><tr><td>10</td><td>Ivan</td><td>IT</td><td>3500</td><td>True</td></tr><tr><td>11</td><td>Maria</td><td>HR</td><td>4000</td><td>True</td></tr><tr><td>12</td><td>Viktor</td><td></td><td>2300</td><td>True</td></tr></tbody></table>
+<h3>Departments!A1:D5</h3><table><thead><tr><th>Department</th><th>Manager</th><th>Office</th><th>Budget</th></tr></thead><tbody><tr><td>IT</td><td>Ivanov</td><td>Sofia</td><td>120000</td></tr><tr><td>HR</td><td>Petrova</td><td>Varna</td><td>70000</td></tr><tr><td>Finance</td><td>Dimitrov</td><td>Sofia</td><td>95000</td></tr><tr><td>Sales</td><td>Stoyanov</td><td>Plovdiv</td><td>88000</td></tr></tbody></table>
+<h2 id="general">General Examples</h2><p>The complete explanatory examples are listed above.</p>
+<h2 id="open">1. Open and inspect a table</h2><p>Run <code>TableExample01_OpenAndInspect</code>. It loads Employees and prints metadata in the Immediate window.</p>
+<pre><code>Option Explicit
+
+Public Sub TableExample01_OpenAndInspect()
+    On Error GoTo ErrorHandler
+    Dim employees As SqlTable
+    Set employees = New SqlTable
+    Set employees = employees.OpenRange( _
+        ThisWorkbook.Worksheets("Employees").Range("A1:E13"))
+
+    Debug.Print "Headers: "; employees.HeaderCount
+    Debug.Print "Data rows: "; employees.RowCount
+    Debug.Print "Columns: "; employees.ColumnCount
+    Debug.Print "Has Salary: "; employees.HasColumn("Salary")
+    Debug.Print "Has column 4: "; employees.HasColumn(4)
+    MsgBox "Metadata was printed in the Immediate window.", vbInformation
+    Exit Sub
+ErrorHandler:
+    MsgBox "TableExample01 failed: " &amp; Err.Description, vbCritical
+End Sub</code></pre>
+<h3>SQL equivalent</h3><pre><code>-- Metadata and row-count operations are client-side table access.
+SELECT COUNT(*) FROM Employees;</code></pre><div class="result">Expected metadata: 5 headers/columns and 12 data rows.</div><p class="top"><a href="#contents">Back to contents</a></p>
+<h2 id="read">2. Read cells, rows and columns</h2><p>Run <code>TableExample02_ReadValues</code>. Public row indexes start at 1 for the first data row; the header row is not counted.</p>
+<pre><code>Option Explicit
+
+Public Sub TableExample02_ReadValues()
+    On Error GoTo ErrorHandler
+    Dim employees As SqlTable
+    Dim rowArray As Variant
+    Dim rowObject As Object
+    Dim salaries As Variant
+    Dim allData As Variant
+
+    Set employees = New SqlTable
+    Set employees = employees.OpenRange( _
+        ThisWorkbook.Worksheets("Employees").Range("A1:E13"))
+
+    Debug.Print "First name: "; employees.GetCell(1, "Name")
+    Debug.Print "Fifth salary: "; employees.GetCell(5, "Salary")
+
+    rowArray = employees.GetRowArray(1)
+    Debug.Print "Row array name: "; rowArray(2)
+
+    Set rowObject = employees.GetRowDictionary(1)
+    Debug.Print "Row dictionary name: "; rowObject("Name")
+    Debug.Print "Row dictionary salary: "; rowObject("Salary")
+
+    salaries = employees.GetColumn("Salary")
+    Debug.Print "First salary from column: "; salaries(1)
+
+    allData = employees.GetAll()
+    Debug.Print "Header from GetAll: "; allData(1, 2)
+    MsgBox "Values were printed in the Immediate window.", vbInformation
+    Exit Sub
+ErrorHandler:
+    MsgBox "TableExample02 failed: " &amp; Err.Description, vbCritical
+End Sub</code></pre>
+<h3>SQL equivalent</h3><pre><code>SELECT Name FROM Employees;
+SELECT Salary FROM Employees;
+SELECT * FROM Employees;</code></pre><div class="result">The first data row is Ivan. The second column of a row array is Name; the fourth is Salary.</div><p class="top"><a href="#contents">Back to contents</a></p>
+<h2 id="find">3. Find rows and test existence</h2><p>Run <code>TableExample03_FindRows</code>. <code>FindFirst</code> and collection items are row dictionaries.</p>
+<pre><code>Option Explicit
+
+Public Sub TableExample03_FindRows()
+    On Error GoTo ErrorHandler
+    Dim employees As SqlTable
+    Dim firstEmployee As Object
+    Dim matches As Collection
+    Dim row As Object
+
+    Set employees = New SqlTable
+    Set employees = employees.OpenRange( _
+        ThisWorkbook.Worksheets("Employees").Range("A1:E13"))
+
+    Set firstEmployee = employees.FindFirst("EmployeeId", "=", 5)
+    If Not firstEmployee Is Nothing Then
+        Debug.Print "Employee 5: "; firstEmployee("Name")
+    End If
+
+    Set matches = employees.FindAll("Department", "=", "IT")
+    Debug.Print "IT matches: "; matches.Count
+    For Each row In matches
+        Debug.Print row("Name"); " - "; row("Salary")
+    Next row
+
+    Debug.Print "Viktor exists: "; employees.Exists("Name", "=", "Viktor")
+    Debug.Print "Nobody exists: "; employees.Exists("Name", "=", "Nobody")
+    MsgBox "Find results were printed in the Immediate window.", vbInformation
+    Exit Sub
+ErrorHandler:
+    MsgBox "TableExample03 failed: " &amp; Err.Description, vbCritical
+End Sub</code></pre>
+<h3>SQL equivalent</h3><pre><code>SELECT * FROM Employees WHERE EmployeeId = 5 LIMIT 1;
+SELECT * FROM Employees WHERE Department = 'IT';
+SELECT EXISTS(SELECT 1 FROM Employees WHERE Name = 'Viktor');</code></pre><div class="result">Employee 5 is Elena. There are six IT matches. Viktor exists; Nobody does not.</div><p class="top"><a href="#contents">Back to contents</a></p>
+<h2 id="query">4. Convert SqlTable to SqlQuery</h2><p>Run <code>TableExample04_QueryAndWrite</code>. This is the recommended way to move from simple table access to joins, typed filters, ordering, and output.</p>
+<pre><code>Option Explicit
+
+Public Sub TableExample04_QueryAndWrite()
+    On Error GoTo ErrorHandler
+    Dim employees As SqlTable
+    Dim query As SqlQuery
+
+    Set employees = New SqlTable
+    Set employees = employees.OpenRange( _
+        ThisWorkbook.Worksheets("Employees").Range("A1:E13"))
+
+    Set query = employees.Query()
+    Set query = query.SelectColumns("Name", "Salary")
+    Set query = query.Where("Department", "=", "IT")
+    Set query = query.OrderBy("Salary", "DESC")
+    Set query = query.Limit(3)
+
+    query.WriteToRange ThisWorkbook.Worksheets("Results").Range("A1")
+    MsgBox "SqlTable query result written to Results!A1.", vbInformation
+    Exit Sub
+ErrorHandler:
+    MsgBox "TableExample04 failed: " &amp; Err.Description, vbCritical
+End Sub</code></pre>
+<h3>SQL equivalent</h3><pre><code>SELECT Name, Salary
+FROM Employees
+WHERE Department = 'IT'
+ORDER BY Salary DESC
+LIMIT 3;</code></pre><div class="result">Expected rows: Elena/4200, Ivan/3500, Ivan/3500.</div><p class="top"><a href="#contents">Back to contents</a></p>
+<h2>Recommended relationship</h2><p>Use <code>SqlTable</code> for direct reads and simple lookups. Use <code>SqlTable.Query()</code> when the operation becomes a query:</p><pre><code>SqlTable → Query() → SqlQuery → ToArray()/WriteToRange()</code></pre>
+<h2 id="methods">Public Method Examples</h2><p>Each section below is a complete, independent procedure. Paste one procedure into a standard module and run it.</p>
+<h3 id="m-openrange">OpenRange</h3><pre><code>Option Explicit
+Public Sub Method_OpenRange()
+    Dim t As SqlTable: Set t = New SqlTable
+    Set t = t.OpenRange(Worksheets("Employees").Range("A1:E13"))
+    MsgBox t.RowCount &amp; " data rows loaded."
+End Sub</code></pre>
+<h3 id="m-openarray">OpenArray</h3><pre><code>Option Explicit
+Public Sub Method_OpenArray()
+    Dim t As SqlTable, a As Variant
+    a = Worksheets("Employees").Range("A1:E13").Value2
+    Set t = New SqlTable: Set t = t.OpenArray(a)
+    MsgBox t.ColumnCount &amp; " columns loaded."
+End Sub</code></pre>
+<h3 id="m-headercount">HeaderCount</h3><pre><code>Option Explicit
+Public Sub Method_HeaderCount()
+    Dim t As SqlTable: Set t = New SqlTable
+    Set t = t.OpenRange(Worksheets("Employees").Range("A1:E13"))
+    MsgBox t.HeaderCount
+End Sub</code></pre>
+<h3 id="m-rowcount">RowCount</h3><pre><code>Option Explicit
+Public Sub Method_RowCount()
+    Dim t As SqlTable: Set t = New SqlTable
+    Set t = t.OpenRange(Worksheets("Employees").Range("A1:E13"))
+    MsgBox t.RowCount
+End Sub</code></pre>
+<h3 id="m-columncount">ColumnCount</h3><pre><code>Option Explicit
+Public Sub Method_ColumnCount()
+    Dim t As SqlTable: Set t = New SqlTable
+    Set t = t.OpenRange(Worksheets("Employees").Range("A1:E13"))
+    MsgBox t.ColumnCount
+End Sub</code></pre>
+<h3 id="m-hascolumn">HasColumn</h3><pre><code>Option Explicit
+Public Sub Method_HasColumn()
+    Dim t As SqlTable: Set t = New SqlTable
+    Set t = t.OpenRange(Worksheets("Employees").Range("A1:E13"))
+    MsgBox t.HasColumn("Salary")
+End Sub</code></pre>
+<h3 id="m-getcell">GetCell</h3><pre><code>Option Explicit
+Public Sub Method_GetCell()
+    Dim t As SqlTable: Set t = New SqlTable
+    Set t = t.OpenRange(Worksheets("Employees").Range("A1:E13"))
+    MsgBox t.GetCell(1, "Name")
+End Sub</code></pre>
+<h3 id="m-getrowarray">GetRowArray</h3><pre><code>Option Explicit
+Public Sub Method_GetRowArray()
+    Dim t As SqlTable, r As Variant: Set t = New SqlTable
+    Set t = t.OpenRange(Worksheets("Employees").Range("A1:E13"))
+    r = t.GetRowArray(1): MsgBox r(2) &amp; " / " &amp; r(4)
+End Sub</code></pre>
+<h3 id="m-getrowdictionary">GetRowDictionary</h3><pre><code>Option Explicit
+Public Sub Method_GetRowDictionary()
+    Dim t As SqlTable, r As Object: Set t = New SqlTable
+    Set t = t.OpenRange(Worksheets("Employees").Range("A1:E13"))
+    Set r = t.GetRowDictionary(1): MsgBox r("Name") &amp; " / " &amp; r("Salary")
+End Sub</code></pre>
+<h3 id="m-getcolumn">GetColumn</h3><pre><code>Option Explicit
+Public Sub Method_GetColumn()
+    Dim t As SqlTable, values As Variant: Set t = New SqlTable
+    Set t = t.OpenRange(Worksheets("Employees").Range("A1:E13"))
+    values = t.GetColumn("Name"): MsgBox values(1) &amp; " / " &amp; values(2)
+End Sub</code></pre>
+<h3 id="m-getall">GetAll</h3><pre><code>Option Explicit
+Public Sub Method_GetAll()
+    Dim t As SqlTable, values As Variant: Set t = New SqlTable
+    Set t = t.OpenRange(Worksheets("Employees").Range("A1:E13"))
+    values = t.GetAll(): MsgBox values(1, 1) &amp; " / " &amp; values(2, 2)
+End Sub</code></pre>
+<h3 id="m-query">Query</h3><pre><code>Option Explicit
+Public Sub Method_Query()
+    Dim t As SqlTable, q As SqlQuery: Set t = New SqlTable
+    Set t = t.OpenRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = t.Query(): Set q = q.Where("Department", "=", "IT")
+    q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-findfirst">FindFirst</h3><pre><code>Option Explicit
+Public Sub Method_FindFirst()
+    Dim t As SqlTable, r As Object: Set t = New SqlTable
+    Set t = t.OpenRange(Worksheets("Employees").Range("A1:E13"))
+    Set r = t.FindFirst("EmployeeId", "=", 5): MsgBox r("Name")
+End Sub</code></pre>
+<h3 id="m-findall">FindAll</h3><pre><code>Option Explicit
+Public Sub Method_FindAll()
+    Dim t As SqlTable, rows As Collection: Set t = New SqlTable
+    Set t = t.OpenRange(Worksheets("Employees").Range("A1:E13"))
+    Set rows = t.FindAll("Department", "=", "IT"): MsgBox rows.Count
+End Sub</code></pre>
+<h3 id="m-count">Count</h3><pre><code>Option Explicit
+Public Sub Method_Count()
+    Dim t As SqlTable: Set t = New SqlTable
+    Set t = t.OpenRange(Worksheets("Employees").Range("A1:E13"))
+    MsgBox t.Count
+End Sub</code></pre>
+<h3 id="m-exists">Exists</h3><pre><code>Option Explicit
+Public Sub Method_Exists()
+    Dim t As SqlTable: Set t = New SqlTable
+    Set t = t.OpenRange(Worksheets("Employees").Range("A1:E13"))
+    MsgBox t.Exists("Name", "=", "Viktor")
+End Sub</code></pre>
+</body></html>

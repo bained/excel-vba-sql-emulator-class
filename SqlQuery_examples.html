@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SqlQuery Complete Examples</title>
+<style>
+body{font-family:Segoe UI,Arial,sans-serif;line-height:1.5;max-width:1120px;margin:2rem auto;padding:0 1rem;color:#202124}
+h1,h2,h3{color:#1f4e79}
+h2{border-bottom:2px solid #d9eaf7;padding-bottom:.35rem;margin-top:2.7rem}
+nav{background:#eef6fc;border:1px solid #c7ddec;border-radius:6px;padding:1rem 1.4rem}nav ul{columns:2}nav a{color:#145a86;text-decoration:none}
+pre{background:#f5f7f9;border:1px solid #d6dde5;border-radius:5px;padding:1rem;overflow:auto}code{font-family:Consolas,monospace}.note{background:#fff8dc;border-left:4px solid #e4b400;padding:.7rem 1rem}.result{background:#eef8ee;border-left:4px solid #5b9b5b;padding:.7rem 1rem}.top{font-size:.9rem}
+</style></head><body>
+<h1>SqlQuery: Complete Copy-and-Paste Examples</h1>
+<p>This tutorial uses <code>Employees!A1:E13</code>, <code>Departments!A1:D5</code>, and an empty <code>Results</code> worksheet.</p>
+<div class="note"><strong>Before you start:</strong> import <code>SqlQuery.cls</code>, save the workbook as <code>.xlsm</code>, compile the project, and paste each complete procedure into a standard module. The SQL blocks are conceptual equivalents because the library does not parse SQL text.</div>
+<h2 id="contents">Contents</h2><nav><ul><li><a href="#data">Workbook data</a></li><li><a href="#general">General Examples</a></li><li><a href="#basic">1. Basic query</a></li><li><a href="#alias">2. Aliases</a></li><li><a href="#cast">3. Typed conversion / CAST</a></li><li><a href="#inpaging">4. IN, DISTINCT and paging</a></li><li><a href="#innerjoin">5. INNER JOIN</a></li><li><a href="#leftjoin">6. LEFT JOIN</a></li><li><a href="#aggregate">7. GROUP BY and aggregates</a></li><li><a href="#diagnostics">8. Diagnostics</a></li><li><a href="#methods">Public Method Examples</a></li><li><a href="#m-loadrange">LoadRange</a></li><li><a href="#m-loadarray">LoadArray</a></li><li><a href="#m-selectcolumns">SelectColumns</a></li><li><a href="#m-selectall">SelectAll</a></li><li><a href="#m-where">Where</a></li><li><a href="#m-wheretyped">WhereTyped</a></li><li><a href="#m-andwhere">AndWhere</a></li><li><a href="#m-andwheretyped">AndWhereTyped</a></li><li><a href="#m-where-null">NULL predicates</a></li><li><a href="#m-wherein">IN predicates</a></li><li><a href="#m-orderby">ORDER BY</a></li><li><a href="#m-selectdistinct">DISTINCT</a></li><li><a href="#m-page">Paging</a></li><li><a href="#m-policy">SetConversionPolicy</a></li><li><a href="#m-diagnostics">Diagnostics</a></li><li><a href="#m-join">JOIN</a></li><li><a href="#m-group">Aggregates</a></li><li><a href="#m-toarray">ToArray</a></li><li><a href="#m-writetorange">WriteToRange</a></li><li><a href="#m-typed">Typed shortcuts</a></li></ul></nav>
+<h2 id="data">Workbook data</h2>
+<p>These are the exact source tables used by every example. Copy them to worksheets with the same names if you are using another workbook.</p>
+<h3>Employees!A1:E13</h3>
+<table><thead><tr><th>EmployeeId</th><th>Name</th><th>Department</th><th>Salary</th><th>Active</th></tr></thead><tbody>
+<tr><td>1</td><td>Ivan</td><td>IT</td><td>3500</td><td>True</td></tr><tr><td>2</td><td>Georgi</td><td>IT</td><td>2500</td><td>True</td></tr><tr><td>3</td><td>Maria</td><td>HR</td><td>4000</td><td>True</td></tr><tr><td>4</td><td>Petar</td><td>Finance</td><td>3000</td><td>True</td></tr><tr><td>5</td><td>Elena</td><td>IT</td><td>4200</td><td>True</td></tr><tr><td>6</td><td>Emilia</td><td>HR</td><td>2800</td><td>False</td></tr><tr><td>7</td><td>Stefan</td><td>IT</td><td>1900</td><td>True</td></tr><tr><td>8</td><td>Emil</td><td>IT</td><td>2100</td><td>True</td></tr><tr><td>9</td><td>Anna</td><td>Legal</td><td>not-a-number</td><td>True</td></tr><tr><td>10</td><td>Ivan</td><td>IT</td><td>3500</td><td>True</td></tr><tr><td>11</td><td>Maria</td><td>HR</td><td>4000</td><td>True</td></tr><tr><td>12</td><td>Viktor</td><td></td><td>2300</td><td>True</td></tr>
+</tbody></table>
+<h3>Departments!A1:D5</h3>
+<table><thead><tr><th>Department</th><th>Manager</th><th>Office</th><th>Budget</th></tr></thead><tbody><tr><td>IT</td><td>Ivanov</td><td>Sofia</td><td>120000</td></tr><tr><td>HR</td><td>Petrova</td><td>Varna</td><td>70000</td></tr><tr><td>Finance</td><td>Dimitrov</td><td>Sofia</td><td>95000</td></tr><tr><td>Sales</td><td>Stoyanov</td><td>Plovdiv</td><td>88000</td></tr></tbody></table>
+<h2 id="general">General Examples</h2><p>The complete, explanatory examples are listed in the Contents above.</p>
+<h2 id="basic">1. Basic range query</h2><p>Run <code>Example01_BasicRangeQuery</code>. It filters IT employees with salary above 2,000 and writes the result to Results.</p>
+<pre><code>Option Explicit
+
+Public Sub Example01_BasicRangeQuery()
+    On Error GoTo ErrorHandler
+    Dim query As SqlQuery
+    Set query = New SqlQuery
+    Set query = query.LoadRange(ThisWorkbook.Worksheets("Employees").Range("A1:E13"))
+    Set query = query.SelectColumns("Name", "Salary")
+    Set query = query.Where("Department", "=", "IT")
+    Set query = query.AndWhere("Salary", ">", 2000)
+    Set query = query.OrderBy("Salary", "DESC")
+    query.WriteToRange ThisWorkbook.Worksheets("Results").Range("A1")
+    MsgBox "Result written to Results!A1.", vbInformation
+    Exit Sub
+ErrorHandler:
+    MsgBox "Example01 failed: " &amp; Err.Description, vbCritical
+End Sub</code></pre>
+<h3>SQL equivalent</h3><pre><code>SELECT Name, Salary
+FROM Employees
+WHERE Department = 'IT' AND Salary &gt; 2000
+ORDER BY Salary DESC;</code></pre><div class="result">Expected rows: Elena/4200, Ivan/3500, Ivan/3500, Georgi/2500, Emil/2100.</div><p class="top"><a href="#contents">Back to contents</a></p>
+<h2 id="alias">2. Aliases and projection</h2><p>Run <code>Example02_Aliases</code>. The source field <code>Name</code> is displayed as <code>Employee</code>.</p>
+<pre><code>Option Explicit
+
+Public Sub Example02_Aliases()
+    On Error GoTo ErrorHandler
+    Dim query As SqlQuery
+    Set query = New SqlQuery
+    Set query = query.LoadRange(ThisWorkbook.Worksheets("Employees").Range("A1:E13"))
+    Set query = query.SelectColumns("Name AS Employee", "Department", "Salary")
+    Set query = query.Where("Department", "=", "HR")
+    Set query = query.OrderBy("Salary", "DESC")
+    query.WriteToRange ThisWorkbook.Worksheets("Results").Range("A1")
+    MsgBox "Aliased result written to Results!A1.", vbInformation
+    Exit Sub
+ErrorHandler:
+    MsgBox "Example02 failed: " &amp; Err.Description, vbCritical
+End Sub</code></pre>
+<h3>SQL equivalent</h3><pre><code>SELECT Name AS Employee, Department, Salary
+FROM Employees WHERE Department = 'HR' ORDER BY Salary DESC;</code></pre><div class="result">The header is Employee, Department, Salary. Expected rows: Maria/4000, Emilia/2800, Maria/4000.</div><p class="top"><a href="#contents">Back to contents</a></p>
+<h2 id="cast">3. Typed conversion and SQL CAST</h2><p>Run <code>Example03_TypedConversion</code>. <code>WhereAsText</code> and <code>AndWhereAsDouble</code> are VBA equivalents of explicit SQL casts. <code>IGNORE</code> is used because Anna has <code>not-a-number</code> and Viktor has a blank Department.</p>
+<pre><code>Option Explicit
+
+Public Sub Example03_TypedConversion()
+    On Error GoTo ErrorHandler
+    Dim query As SqlQuery
+    Set query = New SqlQuery
+    Set query = query.LoadRange(ThisWorkbook.Worksheets("Employees").Range("A1:E13"))
+    Set query = query.SetConversionPolicy("IGNORE")
+    Set query = query.SelectColumns("Name", "Salary")
+    Set query = query.WhereAsText("Department", "=", "IT")
+    Set query = query.AndWhereAsDouble("Salary", ">", 2000)
+    Set query = query.OrderByAsDouble("Salary", "DESC")
+    query.WriteToRange ThisWorkbook.Worksheets("Results").Range("A1")
+    MsgBox "Typed result written to Results!A1.", vbInformation
+    Exit Sub
+ErrorHandler:
+    MsgBox "Example03 failed: " &amp; Err.Description, vbCritical
+End Sub</code></pre>
+<h3>SQL equivalent</h3><pre><code>SELECT Name, Salary FROM Employees
+WHERE CAST(Department AS TEXT) = 'IT'
+  AND CAST(Salary AS DOUBLE) &gt; 2000
+ORDER BY CAST(Salary AS DOUBLE) DESC;</code></pre><div class="result">Expected rows: Elena/4200, Ivan/3500, Ivan/3500, Georgi/2500, Emil/2100.</div><p class="top"><a href="#contents">Back to contents</a></p>
+<h2 id="inpaging">4. IN, DISTINCT and paging</h2><p>Run <code>Example04_InDistinctAndPaging</code>. The query filters departments, converts salary to DOUBLE, removes duplicate projected rows, sorts, and returns five rows.</p>
+<pre><code>Option Explicit
+
+Public Sub Example04_InDistinctAndPaging()
+    On Error GoTo ErrorHandler
+    Dim query As SqlQuery
+    Set query = New SqlQuery
+    Set query = query.LoadRange(ThisWorkbook.Worksheets("Employees").Range("A1:E13"))
+    Set query = query.SetConversionPolicy("IGNORE")
+    Set query = query.SelectColumns("Name", "Department", "Salary")
+    Set query = query.WhereInAsText("Department", "IT", "HR", "Finance")
+    Set query = query.AndWhereAsDouble("Salary", ">", 2000)
+    Set query = query.Distinct()
+    Set query = query.OrderByAsDouble("Salary", "DESC")
+    Set query = query.Limit(5)
+    query.WriteToRange ThisWorkbook.Worksheets("Results").Range("A1")
+    MsgBox "Five-row result written to Results!A1.", vbInformation
+    Exit Sub
+ErrorHandler:
+    MsgBox "Example04 failed: " &amp; Err.Description, vbCritical
+End Sub</code></pre>
+<h3>SQL equivalent</h3><pre><code>SELECT DISTINCT Name, Department, Salary FROM Employees
+WHERE Department IN ('IT','HR','Finance')
+  AND CAST(Salary AS DOUBLE) &gt; 2000
+ORDER BY CAST(Salary AS DOUBLE) DESC LIMIT 5;</code></pre><div class="result">Expected rows: Elena, Maria, Ivan, Petar, Georgi.</div><p class="top"><a href="#contents">Back to contents</a></p>
+<h2 id="innerjoin">5. INNER JOIN</h2><p>Run <code>Example05_InnerJoin</code>. It adds Manager and Office from Departments. Employees without a matching department are excluded.</p>
+<pre><code>Option Explicit
+
+Public Sub Example05_InnerJoin()
+    On Error GoTo ErrorHandler
+    Dim departments As Variant
+    Dim query As SqlQuery
+    departments = ThisWorkbook.Worksheets("Departments").Range("A1:D5").Value2
+    Set query = New SqlQuery
+    Set query = query.LoadRange(ThisWorkbook.Worksheets("Employees").Range("A1:E13"))
+    Set query = query.InnerJoin(departments, "Department", "Department", "TEXT")
+    Set query = query.SelectColumns("Name", "Department", "Manager", "Office")
+    Set query = query.OrderBy("Name", "ASC")
+    query.WriteToRange ThisWorkbook.Worksheets("Results").Range("A1")
+    MsgBox "INNER JOIN result written to Results!A1.", vbInformation
+    Exit Sub
+ErrorHandler:
+    MsgBox "Example05 failed: " &amp; Err.Description, vbCritical
+End Sub</code></pre>
+<h3>SQL equivalent</h3><pre><code>SELECT e.Name, e.Department, d.Manager, d.Office
+FROM Employees AS e INNER JOIN Departments AS d
+ON e.Department = d.Department
+ORDER BY e.Name ASC;</code></pre><div class="result">Anna and Viktor are excluded because their departments do not match Departments.</div><p class="top"><a href="#contents">Back to contents</a></p>
+<h2 id="leftjoin">6. LEFT JOIN</h2><p>Run <code>Example06_LeftJoin</code>. Every employee remains; unmatched right-side columns become Null.</p>
+<pre><code>Option Explicit
+
+Public Sub Example06_LeftJoin()
+    On Error GoTo ErrorHandler
+    Dim query As SqlQuery
+    Set query = New SqlQuery
+    Set query = query.LoadRange(ThisWorkbook.Worksheets("Employees").Range("A1:E13"))
+    Set query = query.LeftJoin(ThisWorkbook.Worksheets("Departments").Range("A1:D5"), _
+                               "Department", "Department", "TEXT")
+    Set query = query.SelectColumns("Name", "Department", "Manager")
+    Set query = query.OrderBy("Name", "ASC")
+    query.WriteToRange ThisWorkbook.Worksheets("Results").Range("A1")
+    MsgBox "LEFT JOIN result written to Results!A1.", vbInformation
+    Exit Sub
+ErrorHandler:
+    MsgBox "Example06 failed: " &amp; Err.Description, vbCritical
+End Sub</code></pre>
+<h3>SQL equivalent</h3><pre><code>SELECT e.Name, e.Department, d.Manager
+FROM Employees AS e LEFT JOIN Departments AS d
+ON e.Department = d.Department
+ORDER BY e.Name ASC;</code></pre><div class="result">Anna and Viktor remain in the result with Null Manager values.</div><p class="top"><a href="#contents">Back to contents</a></p>
+<h2 id="aggregate">7. GROUP BY and aggregates</h2><p>Run <code>Example07_GroupAndAggregate</code>. <code>IGNORE</code> excludes Anna's invalid salary from numeric calculations.</p>
+<pre><code>Option Explicit
+
+Public Sub Example07_GroupAndAggregate()
+    On Error GoTo ErrorHandler
+    Dim query As SqlQuery
+    Set query = New SqlQuery
+    Set query = query.LoadRange(ThisWorkbook.Worksheets("Employees").Range("A1:E13"))
+    Set query = query.SetConversionPolicy("IGNORE")
+    Set query = query.GroupBy("Department")
+    Set query = query.CountRows("EmployeeCount")
+    Set query = query.Sum("Salary", "TotalSalary", "DOUBLE")
+    Set query = query.Avg("Salary", "AverageSalary", "DOUBLE")
+    Set query = query.Min("Salary", "MinSalary", "DOUBLE")
+    Set query = query.Max("Salary", "MaxSalary", "DOUBLE")
+    query.WriteToRange ThisWorkbook.Worksheets("Results").Range("A1")
+    MsgBox "Aggregate result written to Results!A1.", vbInformation
+    Exit Sub
+ErrorHandler:
+    MsgBox "Example07 failed: " &amp; Err.Description, vbCritical
+End Sub</code></pre>
+<h3>SQL equivalent</h3><pre><code>SELECT Department, COUNT(*) AS EmployeeCount,
+SUM(CAST(Salary AS DOUBLE)) AS TotalSalary,
+AVG(CAST(Salary AS DOUBLE)) AS AverageSalary,
+MIN(CAST(Salary AS DOUBLE)) AS MinSalary,
+MAX(CAST(Salary AS DOUBLE)) AS MaxSalary
+FROM Employees GROUP BY Department;</code></pre><div class="result">The blank Department forms a separate group. Anna contributes to COUNT(*) but not numeric salary aggregates.</div><p class="top"><a href="#contents">Back to contents</a></p>
+<h2 id="diagnostics">8. Conversion diagnostics</h2><p>Run <code>Example08_ConversionDiagnostics</code>. It keeps invalid values in the result and records them in a diagnostic array.</p>
+<pre><code>Option Explicit
+
+Public Sub Example08_ConversionDiagnostics()
+    On Error GoTo ErrorHandler
+    Dim query As SqlQuery
+    Dim result As Variant
+    Dim errors As Variant
+    Set query = New SqlQuery
+    Set query = query.LoadRange(ThisWorkbook.Worksheets("Employees").Range("A1:E13"))
+    Set query = query.SetConversionPolicy("IGNORE")
+    Set query = query.EnableDiagnostics()
+    Set query = query.SelectColumns("Name", "Salary")
+    Set query = query.OrderByAsDouble("Salary", "ASC")
+    result = query.ToArray()
+    errors = query.GetConversionErrors()
+    ThisWorkbook.Worksheets("Results").Range("A1").Resize(UBound(result, 1), UBound(result, 2)).Value = result
+    Debug.Print "Diagnostic records: "; UBound(errors, 1) - 1
+    If UBound(errors, 1) &gt; 1 Then Debug.Print "Invalid value: "; errors(2, 5)
+    Set query = query.ClearDiagnostics()
+    MsgBox "Result written to Results; diagnostics printed in the Immediate window.", vbInformation
+    Exit Sub
+ErrorHandler:
+    MsgBox "Example08 failed: " &amp; Err.Description, vbCritical
+End Sub</code></pre>
+<h3>SQL equivalent</h3><pre><code>SELECT Name, Salary FROM Employees
+ORDER BY CAST(Salary AS DOUBLE) ASC;
+-- Diagnostics are application-specific.</code></pre><div class="result">The Immediate window reports Anna's not-a-number value.</div><p class="top"><a href="#contents">Back to contents</a></p>
+<h2 id="methods">Public Method Examples</h2><p>Every section below is an independent, complete procedure. Paste one procedure into a standard module and run it.</p>
+<h3 id="m-loadrange">LoadRange</h3><pre><code>Option Explicit
+Public Sub Method_LoadRange()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Dim result As Variant
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    result = q.ToArray()
+    MsgBox result(1, 2)
+End Sub</code></pre>
+<h3 id="m-loadarray">LoadArray</h3><pre><code>Option Explicit
+Public Sub Method_LoadArray()
+    Dim q As SqlQuery, a As Variant: Set q = New SqlQuery
+    a = Worksheets("Employees").Range("A1:E13").Value2
+    Set q = q.LoadArray(a): MsgBox q.ToArray()(2, 2)
+End Sub</code></pre>
+<h3 id="m-selectcolumns">SelectColumns</h3><pre><code>Option Explicit
+Public Sub Method_SelectColumns()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.SelectColumns("Name AS Employee", "Salary")
+    q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-selectall">SelectAll</h3><pre><code>Option Explicit
+Public Sub Method_SelectAll()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.SelectAll(): q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-where">Where</h3><pre><code>Option Explicit
+Public Sub Method_Where()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.Where("Department", "=", "IT"): q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-wheretyped">WhereTyped</h3><pre><code>Option Explicit
+Public Sub Method_WhereTyped()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.SetConversionPolicy("IGNORE")
+    Set q = q.WhereTyped("Salary", ">", 3000, "DOUBLE")
+    q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-andwhere">AndWhere</h3><pre><code>Option Explicit
+Public Sub Method_AndWhere()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.Where("Department", "=", "IT"): Set q = q.AndWhere("Active", "=", True)
+    q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-andwheretyped">AndWhereTyped</h3><pre><code>Option Explicit
+Public Sub Method_AndWhereTyped()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.SetConversionPolicy("IGNORE"): Set q = q.AndWhereTyped("Salary", ">", 3000, "DOUBLE")
+    q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-where-null">WhereNull / WhereNotNull / AndWhereNull / AndWhereNotNull</h3><pre><code>Option Explicit
+Public Sub Method_NullPredicates()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.WhereNull("Department"): q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-wherein">WhereIn / WhereInTyped / AndWhereIn / AndWhereInTyped</h3><pre><code>Option Explicit
+Public Sub Method_INPredicates()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.WhereIn("Department", "IT", "HR", "Finance")
+    q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-orderby">OrderBy / OrderByTyped</h3><pre><code>Option Explicit
+Public Sub Method_OrderBy()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.SetConversionPolicy("IGNORE"): Set q = q.OrderByTyped("Salary", "DESC", "DOUBLE")
+    q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-selectdistinct">Distinct / SelectDistinct</h3><pre><code>Option Explicit
+Public Sub Method_Distinct()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.SelectColumns("Name"): Set q = q.SelectDistinct()
+    q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-page">Limit / Offset / Page</h3><pre><code>Option Explicit
+Public Sub Method_Paging()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.Where("Department", "=", "IT"): Set q = q.OrderBy("Name", "ASC")
+    Set q = q.Page(2, 1): q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-policy">SetConversionPolicy</h3><pre><code>Option Explicit
+Public Sub Method_SetConversionPolicy()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.SetConversionPolicy("IGNORE"): Set q = q.OrderByAsDouble("Salary", "ASC")
+    q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-diagnostics">EnableDiagnostics / ClearDiagnostics / GetConversionErrors</h3><pre><code>Option Explicit
+Public Sub Method_Diagnostics()
+    Dim q As SqlQuery, errors As Variant: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.SetConversionPolicy("IGNORE"): Set q = q.EnableDiagnostics()
+    Set q = q.OrderByAsDouble("Salary", "ASC"): q.ToArray
+    errors = q.GetConversionErrors(): MsgBox UBound(errors, 1) - 1 &amp; " diagnostic rows"
+    Set q = q.ClearDiagnostics()
+End Sub</code></pre>
+<h3 id="m-join">InnerJoin / LeftJoin</h3><pre><code>Option Explicit
+Public Sub Method_Join()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.InnerJoin(Worksheets("Departments").Range("A1:D5"), "Department", "Department", "TEXT")
+    Set q = q.SelectColumns("Name", "Manager"): q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-group">GroupBy / Aggregate / CountRows / Count / Sum / Avg / Min / Max</h3><pre><code>Option Explicit
+Public Sub Method_Aggregates()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.SetConversionPolicy("IGNORE"): Set q = q.GroupBy("Department")
+    Set q = q.CountRows("Rows"): Set q = q.Sum("Salary", "Total", "DOUBLE")
+    q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-toarray">ToArray</h3><pre><code>Option Explicit
+Public Sub Method_ToArray()
+    Dim q As SqlQuery, a As Variant: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13")): a = q.ToArray()
+    Worksheets("Results").Range("A1").Resize(UBound(a, 1), UBound(a, 2)).Value = a
+End Sub</code></pre>
+<h3 id="m-writetorange">WriteToRange</h3><pre><code>Option Explicit
+Public Sub Method_WriteToRange()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h3 id="m-typed">Typed shortcut methods</h3><pre><code>Option Explicit
+Public Sub Method_TypedShortcuts()
+    Dim q As SqlQuery: Set q = New SqlQuery
+    Set q = q.LoadRange(Worksheets("Employees").Range("A1:E13"))
+    Set q = q.SetConversionPolicy("IGNORE")
+    Set q = q.WhereAsText("Department", "=", "IT")
+    Set q = q.AndWhereAsDouble("Salary", ">", 2000)
+    Set q = q.OrderByAsDouble("Salary", "DESC")
+    q.WriteToRange Worksheets("Results").Range("A1")
+End Sub</code></pre>
+<h2>Execution order</h2><p><code>JOIN → WHERE → GROUP BY/aggregates → projection → DISTINCT → ORDER BY → LIMIT/OFFSET</code>.</p>
+</body></html>
