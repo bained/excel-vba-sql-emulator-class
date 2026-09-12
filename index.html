@@ -55,6 +55,7 @@
             text-decoration: none;
         }
         .button.secondary { background: #365f91; }
+        .button.download { background: #9a5b13; }
         code { font-family: Consolas, monospace; background: #eef2f5; padding: .1rem .3rem; border-radius: 3px; }
         pre { overflow-x: auto; padding: 1rem; border-radius: 5px; background: #f1f4f7; border: 1px solid var(--border); }
         footer { color: var(--muted); text-align: center; padding: 1.5rem; font-size: .9rem; }
@@ -81,6 +82,29 @@
                 The library does not parse SQL text. The SQL shown in the documentation is a conceptual equivalent
                 of the executable VBA API.
             </p>
+        </section>
+
+        <section id="download">
+            <h2>Download</h2>
+            <p>Download the VBA class modules and import them into your Excel VBA project.</p>
+            <div class="grid">
+                <article class="card">
+                    <h3>SqlQuery.cls</h3>
+                    <p>The fluent in-memory query engine.</p>
+                    <a class="button download" download href="https://raw.githubusercontent.com/bained/excel-vba-sql-emulator-class/main/SqlQuery.cls">Download SqlQuery.cls</a>
+                </article>
+                <article class="card">
+                    <h3>SqlTable.cls</h3>
+                    <p>The direct table-access facade.</p>
+                    <a class="button download" download href="https://raw.githubusercontent.com/bained/excel-vba-sql-emulator-class/main/SqlTable.cls">Download SqlTable.cls</a>
+                </article>
+                <article class="card">
+                    <h3>Complete source package</h3>
+                    <p>Download the repository files as a ZIP archive.</p>
+                    <a class="button download" download href="https://github.com/bained/excel-vba-sql-emulator-class/archive/refs/heads/main.zip">Download ZIP</a>
+                </article>
+            </div>
+            <p class="note"><strong>Installation:</strong> open the VBA editor with <code>Alt+F11</code>, then choose <strong>File → Import File</strong> and select the downloaded <code>.cls</code> files.</p>
         </section>
 
         <section>
