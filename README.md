@@ -1,5 +1,7 @@
 # Excel VBA SQL Emulator Class
 
+**Release:** `1.0.1`
+
 A lightweight, in-memory SQL-like query engine for standard Excel VBA.
 
 The project works with Excel `Range` objects and 2D `Variant` arrays. Queries are built with a fluent VBA API; the library does **not** parse SQL text. SQL snippets in the documentation are conceptual equivalents of the VBA operations.
@@ -18,6 +20,19 @@ The project works with Excel `Range` objects and 2D `Variant` arrays. Queries ar
 - Group rows and calculate `COUNT`, `SUM`, `AVG`, `MIN`, and `MAX`.
 - Return results as 2D `Variant` arrays or write them to an Excel range.
 - Access a table directly through the `SqlTable` facade.
+
+## Version 1.0.1
+
+This release includes:
+
+- `SqlQuery` logical expressions with `OR`, `NOT`, grouped predicates, and precedence handling.
+- Typed filters, typed ordering, aggregate aliases, execution-order handling, and aggregate paging.
+- Composite multi-column `INNER JOIN`/`LEFT JOIN` keys.
+- Duplicate-column alias resolution and chained JOIN operations.
+- Computed columns with `UPPER`, `LOWER`, and `LEN` plus computed aliases.
+- `SqlMutation` snapshot writes with `INSERT`, `UPDATE`, `DELETE`, `Commit`, and `Rollback`.
+- Commit validation, external-change detection, atomic restore, and `FAILED` commit logging.
+- Windows CRLF preservation for `.cls` files through the repository `.gitattributes` configuration.
 
 ## Requirements
 
