@@ -12,6 +12,30 @@ body{font-family:Segoe UI,Arial,sans-serif;line-height:1.5;max-width:1120px;marg
 <h3>Departments!A1:D5</h3><table><thead><tr><th>Department</th><th>Manager</th><th>Office</th><th>Budget</th></tr></thead><tbody><tr><td>IT</td><td>Ivanov</td><td>Sofia</td><td>120000</td></tr><tr><td>HR</td><td>Petrova</td><td>Varna</td><td>70000</td></tr><tr><td>Finance</td><td>Dimitrov</td><td>Sofia</td><td>95000</td></tr><tr><td>Sales</td><td>Stoyanov</td><td>Plovdiv</td><td>88000</td></tr></tbody></table>
 <h2 id="general">General Examples</h2><p>The complete explanatory examples are listed above.</p>
 <h2 id="open">1. Open and inspect a table</h2><p>Run <code>TableExample01_OpenAndInspect</code>. It loads Employees and prints metadata in the Immediate window.</p>
+<h3>Automatic range discovery</h3><pre><code>Option Explicit
+
+Public Sub TableExample01b_AutoRange()
+    On Error GoTo ErrorHandler
+    Dim employees As SqlTable
+    Set employees = New SqlTable
+    Set employees = employees.AutoRange("Employees")
+    MsgBox "Automatically loaded " &amp; employees.RowCount &amp; " data rows and " &amp; employees.ColumnCount &amp; " columns.", vbInformation
+
+    Dim r As Object
+    Set r = employees.FindFirst("Name", "=", "Ivan")
+    If r Is Nothing Then
+        Debug.Print "Ivan was not found."
+    Else
+        Debug.Print "Name: "; r("Name")
+        Debug.Print "Department: "; r("Department")
+        Debug.Print "Salary: "; r("Salary")
+    End If
+
+    Exit Sub
+ErrorHandler:
+    MsgBox "AutoRange failed: " &amp; Err.Description, vbCritical
+End Sub</code></pre>
+<p class="small">This uses the current workbook, starts at A1, detects the last populated row and column, and treats row 1 as headers.</p>
 <pre><code>Option Explicit
 
 Public Sub TableExample01_OpenAndInspect()

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SqlMutation Class Manual</title>
+<style>body{font-family:Segoe UI,Arial,sans-serif;line-height:1.5;max-width:1100px;margin:2rem auto;padding:0 1rem;color:#202124}h1,h2,h3{color:#1f4e79}h2{border-bottom:2px solid #d9eaf7;padding-bottom:.35rem;margin-top:2.6rem}nav{background:#eef6fc;border:1px solid #c7ddec;padding:1rem 1.4rem;border-radius:6px}nav ul{columns:3}nav a{color:#145a86;text-decoration:none}pre{background:#f5f7f9;border:1px solid #d6dde5;border-radius:5px;padding:1rem;overflow:auto}code{font-family:Consolas,monospace}.note{background:#fff8dc;border-left:4px solid #e4b400;padding:.7rem 1rem}.result{background:#eef8ee;border-left:4px solid #5b9b5b;padding:.7rem 1rem}.signature{background:#eef6fc;padding:.6rem;border-left:4px solid #5b9b5b;font-family:Consolas,monospace}.back{font-size:.9rem}table{border-collapse:collapse;margin:.8rem 0 1.2rem}th,td{border:1px solid #aab7c4;padding:.35rem .65rem;text-align:left}th{background:#d9eaf7}</style>
+</head>
+<body>
+<h1>SqlMutation Class Manual</h1>
+<p><strong>Purpose:</strong> отделен in-memory фасад за SQL-подобни <code>INSERT</code> и <code>UPDATE</code> операции върху Excel таблица.</p>
+<div class="note"><strong>Основен принцип:</strong> промените първо се извършват върху копие в паметта. Excel worksheet-ът се променя само при <code>Commit</code>.</div>
+<h2 id="contents">Съдържание</h2><nav><ul><li><a href="#workflow">Workflow</a></li><li><a href="#openrange">OpenRange</a></li><li><a href="#autorange">AutoRange</a></li><li><a href="#insert">Insert</a></li><li><a href="#update">UpdateWhere</a></li><li><a href="#affected">RowsAffected</a></li><li><a href="#commit">Commit</a></li><li><a href="#rollback">Rollback</a></li><li><a href="#operators">Operators</a></li><li><a href="#limits">Ограничения</a></li></ul></nav>
+<h2 id="workflow">Препоръчан workflow</h2>
+<pre><code>Dim mutation As SqlMutation
+Dim values As Object
+Set mutation = New SqlMutation
+Set mutation = mutation.AutoRange("Employees")
+' INSERT или UPDATE в паметта
+' Проверка на RowsAffected
+mutation.Commit</code></pre>
+<p class="result">Препоръчително е винаги да проверявате <code>RowsAffected</code> преди <code>Commit</code>.</p>
+<p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="openrange">OpenRange</h2><p class="signature">Public Function OpenRange(ByVal sourceRange As Range) As SqlMutation</p><p>Отваря ръчно зададен range. Първият ред е header row.</p><pre><code>Set mutation = New SqlMutation
+Set mutation = mutation.OpenRange(ThisWorkbook.Worksheets("Employees").Range("A1:E13"))</code></pre><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="autorange">AutoRange</h2><p class="signature">Public Function AutoRange(ByVal sheetName As String) As SqlMutation</p><p>Намира последната попълнена клетка по ред и колона и отваря диапазона от A1. Изисква header row, уникални headers и няма напълно празни редове в data area.</p><pre><code>Set mutation = New SqlMutation
+Set mutation = mutation.AutoRange("Employees")</code></pre><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="insert">Insert</h2><p class="signature">Public Function Insert(ByVal values As Object) As SqlMutation</p><p>Добавя един ред в паметта. Аргументът е late-bound dictionary. Работи и върху header-only таблица без data rows.</p><pre><code>Dim values As Object
+Set values = CreateObject("Scripting.Dictionary")
+values("EmployeeId") = 13
+values("Name") = "Nikolay"
+values("Department") = "IT"
+values("Salary") = 3100
+values("Active") = True
+mutation.Insert values
+Debug.Print mutation.RowsAffected
+mutation.Commit</code></pre><p>Липсващ header key става <code>Empty</code>; непознати keys се игнорират.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="update">UpdateWhere</h2><p class="signature">Public Function UpdateWhere(field, comparisonOperator, expectedValue, values) As SqlMutation</p><p>Променя всички съвпадащи редове.</p><pre><code>Dim values As Object
+Set values = CreateObject("Scripting.Dictionary")
+values("Salary") = 3600
+mutation.UpdateWhere "Name", "=", "Ivan", values
+Debug.Print mutation.RowsAffected
+mutation.Commit</code></pre><p>Ако има два реда с Name = Ivan, и двата се променят.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="delete">DeleteWhere</h2><p class="signature">Public Function DeleteWhere(field, comparisonOperator, expectedValue) As SqlMutation</p><p>Премахва всички съвпадащи data rows от in-memory snapshot-а. Header row се запазва. При <code>Commit</code> trailing worksheet rows се изтриват физически, за да няма остатъчни данни.</p>
+Debug.Print mutation.RowsAffected
+mutation.Commit</code></pre><div class="note">DeleteWhere не променя worksheet-а преди Commit.</div><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="affected">RowsAffected и HasPendingChanges</h2><p class="signature">Public Property Get RowsAffected() As Long<br>Public Property Get HasPendingChanges() As Boolean</p><p><code>RowsAffected</code> връща засегнатите редове. <code>HasPendingChanges</code> е True след Insert/Update/Delete и False след Commit/Rollback.</p><pre><code>If mutation.HasPendingChanges Then
+    Debug.Print "Commit is required"
+End If</code></pre><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="builder">Mutation builder</h2><p class="signature">Where, AndWhere, Update, Delete, MatchedCount</p><p>Builder-ът комбинира условията с AND и изисква поне един filter за Update/Delete.</p><pre><code>mutation.Where("Department", "=", "IT").AndWhere "Salary", ">", 3000
+Debug.Print mutation.MatchedCount
+mutation.Update values</code></pre><p>За всички data rows използвайте explicit <code>Truncate True</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="commit">Commit</h2><p class="signature">Public Function Commit() As SqlMutation</p><p>Записва целия in-memory snapshot обратно в target range-а.</p><pre><code>mutation.UpdateWhere "Department", "=", "IT", values
+If mutation.RowsAffected &gt; 0 Then mutation.Commit</code></pre><div class="note">Commit презаписва целия target range, включително header row.</div><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="rollback">Rollback</h2><p class="signature">Public Function Rollback() As SqlMutation</p><p>Презарежда worksheet range-а и изхвърля неприключилите in-memory промени.</p><pre><code>mutation.UpdateWhere "Name", "=", "Ivan", values
+mutation.Rollback</code></pre><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="operators">Поддържани WHERE оператори</h2><pre><code>=    &lt;&gt;    &gt;    &lt;    &gt;=    &lt;=    LIKE    IS NULL    IS NOT NULL</code></pre><pre><code>mutation.UpdateWhere "Department", "LIKE", "I*", values
+mutation.UpdateWhere "Department", "IS NULL", Empty, values
+mutation.UpdateWhere "Salary", ">", 3000, values</code></pre><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="logging">Commit logging</h2><p class="signature">Public Function GetCommitLog() As Variant<br>Public Function ClearCommitLog() As SqlMutation</p><p>Връща 2D array с commit history. Колоните са <code>Timestamp</code>, <code>Worksheet</code>, <code>Range</code>, <code>RowDelta</code>, <code>Status</code> и <code>Error</code>.</p><pre><code>Dim log As Variant
+log = mutation.GetCommitLog()
+mutation.ClearCommitLog</code></pre><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="truncate">Truncate</h2><p class="signature">Public Function Truncate(Optional ByVal confirm As Boolean = False) As SqlMutation</p><p>Премахва всички data rows, но запазва header row. Изисква explicit confirmation:</p><pre><code>mutation.Truncate True`r`nIf mutation.RowsAffected &gt; 0 Then mutation.Commit</code></pre><p>При header-only таблица RowsAffected = 0. Извикване без True връща грешка.</p><p class="back"><a href="#contents">Back to contents</a></p>`r`n<h2 id="advanced">OR, NOT, групи и Preview</h2><p class="signature">OrWhere, NotWhere, BeginGroup, EndGroup, Count, Preview</p><pre><code>mutation.BeginGroup`r`nmutation.Where "Department", "=", "IT"`r`nmutation.OrWhere "Department", "=", "HR"`r`nmutation.EndGroup`r`nmutation.AndWhere "Active", "=", True`r`nDebug.Print mutation.MatchedCount`r`nresult = mutation.Preview()</code></pre><p>Expression precedence е <code>NOT</code>, после <code>AND</code>, после <code>OR</code>. Update/Delete без filter не са разрешени.</p><p class="back"><a href="#contents">Back to contents</a></p>`r`n<h2 id="typed">Typed filters и conversion policies</h2><p class="signature">SetConversionPolicy, WhereTyped, AndWhereTyped, OrWhereTyped, NotWhereTyped, UpdateWhereTyped, DeleteWhereTyped</p><pre><code>mutation.SetConversionPolicy "IGNORE"`r`nmutation.WhereTyped "Salary", ">", "3000", "DOUBLE"`r`nDebug.Print mutation.MatchedCount</code></pre><p>Поддържат се <code>STRICT</code>, <code>IGNORE</code> и <code>NULL</code>. При STRICT conversion error прекъсва заявката; при IGNORE/NULL редът не съвпада.</p><p class="back"><a href="#contents">Back to contents</a></p>`r`n<h2 id="insert-policy">INSERT validation</h2><p class="signature">SetInsertPolicy, RequireInsertColumns</p><pre><code>mutation.SetInsertPolicy "STRICT"`r`nmutation.RequireInsertColumns "EmployeeId", "Name"</code></pre><p><code>LENIENT</code> игнорира unknown keys. <code>STRICT</code> отхвърля unknown keys и липсващи required columns.</p><p class="back"><a href="#contents">Back to contents</a></p>`r`n<h2 id="diagnostics">Mutation diagnostics</h2><p class="signature">EnableDiagnostics, GetConversionErrors, ClearDiagnostics</p><pre><code>mutation.SetConversionPolicy "IGNORE"`r`nmutation.EnableDiagnostics`r`nmutation.WhereTyped "Salary", ">", "3000", "DOUBLE"`r`nDebug.Print mutation.MatchedCount`r`nerrors = mutation.GetConversionErrors()</code></pre><p>Резултатът съдържа <code>SourceRow</code>, <code>Context</code>, <code>ValueType</code>, <code>Policy</code> и <code>Value</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>`r`n<h2 id="limits">Ограничения</h2><ul><li>Commit logging е in-memory и се губи при унищожаване на обекта.</li><li>Commit презаписва целия target range.</li><li>Няма автоматична typed conversion policy като при SqlQuery.</li></ul>
+<h2 id="commit-safety">Commit validation and atomic restore</h2><p><code>SqlMutation</code> works on an in-memory snapshot. <code>Commit</code> validates that the target worksheet, row count, column count, and original range values are unchanged before writing.</p><pre><code>mutation.UpdateWhere "Department", "=", "IT", values
+If mutation.RowsAffected > 0 Then mutation.Commit</code></pre><p>If the worksheet is changed externally or the write fails, the original range backup is used for restore when possible. The commit log records <code>SUCCESS</code> or <code>FAILED</code>, including the error text.</p>
+<h2 id="mutation-log">Commit log</h2><pre><code>log = mutation.GetCommitLog()
+mutation.ClearCommitLog</code></pre><p>The log columns are <code>Timestamp</code>, <code>Worksheet</code>, <code>Range</code>, <code>RowDelta</code>, <code>Status</code>, and <code>Error</code>.</p>
+<h2 id="mutation-tests">Validation</h2><p>Run <code>RunAllSqlMutationTests</code> from <code>SqlMutationTests.bas</code>. The suite covers snapshot operations, rollback, commit validation, protected-sheet failures, atomic restore, builder precedence, typed filters, diagnostics, and INSERT policies.</p>
+</body></html>

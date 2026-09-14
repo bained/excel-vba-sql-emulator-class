@@ -29,7 +29,9 @@ code { font-family: Consolas, monospace; } .note { background: #fff8dc; border-l
 Set employees = New SqlTable
 Set employees = employees.OpenRange(Worksheets("Employees").Range("A1:E13"))</code></pre>
 <p class="back"><a href="#contents">Back to contents</a></p>
-<h2 id="openrange">OpenRange</h2><p class="signature">Public Function OpenRange(ByVal sourceRange As Range) As SqlTable</p><p>Loads a worksheet range and treats its first row as headers.</p><pre><code>Set employees = employees.OpenRange(Worksheets("Employees").Range("A1:E13"))</code></pre><p><strong>SQL:</strong> <code>FROM Employees</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="openrange">OpenRange</h2><p class="signature">Public Function OpenRange(ByVal sourceRange As Range) As SqlTable</p><p>Loads a manually selected worksheet range and treats its first row as headers.</p><pre><code>Set employees = employees.OpenRange(Worksheets("Employees").Range("A1:E13"))</code></pre><p><strong>SQL:</strong> <code>FROM Employees</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="autorange">AutoRange</h2><p class="signature">Public Function AutoRange(ByVal sheetName As String) As SqlTable</p><p>Finds the last populated row and column in the current workbook worksheet and opens the automatic range from <code>A1</code>. The first row must contain headers and the data area must not contain completely blank rows.</p><pre><code>Set employees = New SqlTable
+Set employees = employees.AutoRange("Employees")</code></pre><p>The manual <code>OpenRange</code> method remains available when an exact range is required.</p><p class="back"><a href="#contents">Back to contents</a></p>
 <h2 id="openarray">OpenArray</h2><p class="signature">Public Function OpenArray(ByRef sourceArray As Variant) As SqlTable</p><p>Loads a 2D Variant array with a header row.</p><pre><code>source = Worksheets("Employees").Range("A1:E13").Value2
 Set employees = employees.OpenArray(source)</code></pre><p><strong>SQL:</strong> an in-memory table source.</p><p class="back"><a href="#contents">Back to contents</a></p>
 <h2 id="headercount">HeaderCount</h2><p class="signature">Public Property Get HeaderCount() As Long</p><p>Returns the number of header fields. It equals <code>ColumnCount</code>.</p><pre><code>Debug.Print employees.HeaderCount</code></pre><p><strong>SQL:</strong> metadata, with no direct SQL result-set equivalent.</p><p class="back"><a href="#contents">Back to contents</a></p>
@@ -51,8 +53,13 @@ Debug.Print salaries(1)</code></pre><p><strong>SQL:</strong> <code>SELECT Salary
 Set query = employees.Query()
 Set query = query.Where("Department", "=", "IT")
 query.WriteToRange Worksheets("Results").Range("A1")</code></pre><p><strong>SQL:</strong> <code>SELECT * FROM Employees WHERE Department = 'IT'</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
-<h2 id="findfirst">FindFirst</h2><p class="signature">Public Function FindFirst(field, comparisonOperator, expectedValue) As Object</p><p>Returns the first matching row dictionary, or <code>Nothing</code> when there is no match.</p><pre><code>Set row = employees.FindFirst("EmployeeId", "=", 5)
-If Not row Is Nothing Then Debug.Print row("Name")</code></pre><p><strong>SQL:</strong> <code>SELECT * FROM Employees WHERE EmployeeId = 5 LIMIT 1</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="findfirst">FindFirst</h2><p class="signature">Public Function FindFirst(field, comparisonOperator, expectedValue) As Object</p><p>Returns the first matching row as a late-bound <code>Scripting.Dictionary</code>, or <code>Nothing</code> when there is no match. The object itself cannot be printed directly; print individual fields.</p><pre><code>Dim row As Object
+Set row = employees.FindFirst("EmployeeId", "=", 5)
+If row Is Nothing Then
+    Debug.Print "No matching row"
+Else
+    Debug.Print row("Name"), row("Salary")
+End If</code></pre><p><strong>SQL:</strong> <code>SELECT * FROM Employees WHERE EmployeeId = 5 LIMIT 1</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
 <h2 id="findall">FindAll</h2><p class="signature">Public Function FindAll(field, comparisonOperator, expectedValue) As Collection</p><p>Returns a Collection of row dictionaries for all matching rows.</p><pre><code>Set matches = employees.FindAll("Department", "=", "IT")
 For Each row In matches: Debug.Print row("Name"): Next row</code></pre><p><strong>SQL:</strong> <code>SELECT * FROM Employees WHERE Department = 'IT'</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
 <h2 id="count">Count</h2><p class="signature">Public Function Count() As Long</p><p>Returns the number of data rows in the opened table.</p><pre><code>Debug.Print employees.Count</code></pre><p><strong>SQL:</strong> <code>SELECT COUNT(*) FROM Employees</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>

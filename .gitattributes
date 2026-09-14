@@ -1,0 +1,7 @@
+# VBA source files must preserve Windows CRLF line endings.
+*.cls -text
+*.bas -text
+
+# Documentation files use normalized text line endings.
+*.html text eol=lf
+*.md text eol=lf

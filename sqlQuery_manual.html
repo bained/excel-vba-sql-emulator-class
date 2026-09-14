@@ -99,5 +99,24 @@ Set query = query.Distinct()</code></pre><p><strong>SQL:</strong> <code>SELECT D
 <h2 id="limit">Limit</h2><p class="signature">Public Function Limit(ByVal rowCount As Long) As SqlQuery</p><p>Limits data rows after ordering.</p><pre><code>Set query = query.Limit(5)</code></pre><p><strong>SQL:</strong> <code>LIMIT 5</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
 <h2 id="offset">Offset</h2><p class="signature">Public Function Offset(ByVal rowCount As Long) As SqlQuery</p><p>Skips data rows after ordering.</p><pre><code>Set query = query.Offset(1)</code></pre><p><strong>SQL:</strong> <code>OFFSET 1</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
 <h2 id="page">Page</h2><p class="signature">Public Function Page(rowCount, [offsetRows]) As SqlQuery</p><p>Sets limit and offset together.</p><pre><code>Set query = query.Page(2, 1)</code></pre><p><strong>SQL:</strong> <code>LIMIT 2 OFFSET 1</code>.</p><p class="back"><a href="#contents">Back to contents</a></p>
+<h2 id="logical-expressions">Logical expressions</h2><p><code>SqlQuery</code> supports <code>AND</code>, <code>OR</code>, <code>NOT</code>, and parenthesized groups. Precedence is <code>NOT</code>, then <code>AND</code>, then <code>OR</code>.</p><pre><code>query.BeginGroup
+query.Where "Department", "=", "IT"
+query.OrWhere "Department", "=", "HR"
+query.EndGroup
+query.AndWhere "Active", "=", True</code></pre><p>Typed variants include <code>OrWhereTyped</code> and <code>NotWhereTyped</code>.</p>
+<h2 id="computed-columns">Computed columns</h2><p>Use <code>SelectComputed</code> or <code>AddComputed</code> for the supported safe functions <code>UPPER</code>, <code>LOWER</code>, and <code>LEN</code>.</p><pre><code>query.SelectColumns "Name"
+query.SelectComputed "UPPER(Name)", "NameUpper"
+query.AddComputed "LOWER(Name)", "NameLower"
+query.AddComputed "LEN(Name)", "NameLength"
+query.OrderBy "NameUpper", "ASC"</code></pre><p>Computed aliases participate in projection, ordering, distinct materialization, and paging. Empty or Null input produces Null.</p>
+<h2 id="join-extensions">Composite and chained JOINs</h2><p>JOIN keys may be a single field or matching one-dimensional arrays of fields.</p><pre><code>query.InnerJoin lookup, _
+    Array("Country", "Code"), _
+    Array("Country", "Code"), _
+    "TEXT", "Lookup"
+
+query.LeftJoin departments, "Department", "Department", "TEXT", "Dept"
+query.LeftJoin offices, "Dept.Code", "Code", "TEXT", "Office"</code></pre><p>Right-side duplicate headers receive a stable prefix such as <code>Right.</code>, or the explicit alias prefix supplied to the JOIN.</p>
+<h2 id="aggregate-execution">Aggregate execution order</h2><p>The execution order is:</p><pre><code>JOIN → WHERE → GROUP BY → aggregates → projection → DISTINCT → ORDER BY → LIMIT/OFFSET</code></pre><p><code>ORDER BY</code> can reference aggregate aliases such as <code>TotalSalary</code>. Null group keys form their own group.</p>
+<h2 id="query-tests">Validation</h2><p>Run <code>RunSqlQueryLogicalTests</code> from <code>SqlQueryTests.bas</code> to validate logical expressions, aggregates, composite JOINs, chained JOINs, aliases, and computed columns.</p>
 </body>
 </html>

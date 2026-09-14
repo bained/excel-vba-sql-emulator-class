@@ -112,7 +112,7 @@
             <div class="grid">
                 <article class="card">
                     <h3>SqlQuery examples</h3>
-                    <p>Complete copy-and-paste examples for filtering, aliases, typed conversion, joins, paging, and aggregates.</p>
+                    <p>Complete copy-and-paste examples for logical expressions, computed columns, typed conversion, composite and chained joins, paging, and aggregates.</p>
                     <a class="button" href="SqlQuery_examples.html">Open examples</a>
                 </article>
                 <article class="card">
@@ -150,9 +150,10 @@ query.WriteToRange ThisWorkbook.Worksheets("Results").Range("A1")</code></pre>
         <section>
             <h2>Supported operations</h2>
             <div class="grid">
-                <div class="card"><h3>Querying</h3><p><code>SELECT</code>-style projection, aliases, <code>WHERE</code>, <code>LIKE</code>, <code>IN</code>, NULL predicates, and typed conversion.</p></div>
-                <div class="card"><h3>Data shaping</h3><p><code>DISTINCT</code>, multi-column ordering, <code>LIMIT</code>, <code>OFFSET</code>, <code>INNER JOIN</code>, and <code>LEFT JOIN</code>.</p></div>
-                <div class="card"><h3>Analytics</h3><p><code>GROUP BY</code>, <code>COUNT</code>, <code>SUM</code>, <code>AVG</code>, <code>MIN</code>, and <code>MAX</code>.</p></div>
+                <div class="card"><h3>Querying</h3><p><code>SELECT</code>-style projection, aliases, <code>AND</code>/<code>OR</code>/<code>NOT</code>, grouped predicates, <code>LIKE</code>, <code>IN</code>, NULL predicates, and typed conversion.</p></div>
+                <div class="card"><h3>Data shaping</h3><p><code>DISTINCT</code>, computed columns, multi-column ordering, paging, composite JOIN keys, duplicate-column aliases, and chained JOINs.</p></div>
+                <div class="card"><h3>Analytics</h3><p><code>GROUP BY</code>, aggregate aliases, execution-order guarantees, <code>COUNT</code>, <code>SUM</code>, <code>AVG</code>, <code>MIN</code>, and <code>MAX</code>.</p></div>
+                <div class="card"><h3>Safe writes</h3><p><code>SqlMutation</code> snapshot mutations, commit validation, rollback, atomic restore, and commit logging.</p></div>
                 <div class="card"><h3>Pure VBA</h3><p>No external DLLs, ActiveX controls, or mandatory third-party references.</p></div>
             </div>
         </section>

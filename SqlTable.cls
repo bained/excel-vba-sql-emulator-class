@@ -35,6 +35,73 @@ ErrorHandler:
     Err.Raise Err.Number, "SqlTable.OpenRange", Err.Description
 End Function
 
+Public Function AutoRange(ByVal sheetName As String) As SqlTable
+    On Error GoTo ErrorHandler
+
+    If Len(Trim$(sheetName)) = 0 Then
+        Err.Raise 5, "SqlTable.AutoRange", "The worksheet name cannot be empty."
+    End If
+
+    Dim sourceSheet As Worksheet
+    On Error Resume Next
+    Set sourceSheet = ThisWorkbook.Worksheets(sheetName)
+    On Error GoTo ErrorHandler
+    If sourceSheet Is Nothing Then
+        Err.Raise 9, "SqlTable.AutoRange", "Worksheet not found: " & sheetName
+    End If
+
+    Dim lastCellByRow As Range
+    Dim lastCellByColumn As Range
+    Set lastCellByRow = sourceSheet.Cells.Find(What:="*", _
+                                               After:=sourceSheet.Cells(1, 1), _
+                                               LookIn:=xlFormulas, _
+                                               LookAt:=xlPart, _
+                                               SearchOrder:=xlByRows, _
+                                               SearchDirection:=xlPrevious, _
+                                               MatchCase:=False)
+    Set lastCellByColumn = sourceSheet.Cells.Find(What:="*", _
+                                                  After:=sourceSheet.Cells(1, 1), _
+                                                  LookIn:=xlFormulas, _
+                                                  LookAt:=xlPart, _
+                                                  SearchOrder:=xlByColumns, _
+                                                  SearchDirection:=xlPrevious, _
+                                                  MatchCase:=False)
+
+    If lastCellByRow Is Nothing Or lastCellByColumn Is Nothing Then
+        Err.Raise 5, "SqlTable.AutoRange", "Worksheet contains no data: " & sheetName
+    End If
+    If lastCellByRow.Row < 1 Or lastCellByColumn.Column < 1 Then
+        Err.Raise 5, "SqlTable.AutoRange", "Worksheet contains no usable table: " & sheetName
+    End If
+
+    Dim automaticRange As Range
+    Set automaticRange = sourceSheet.Range(sourceSheet.Cells(1, 1), _
+                                           sourceSheet.Cells(lastCellByRow.Row, lastCellByColumn.Column))
+
+    If IsError(automaticRange.Cells(1, 1).Value2) Or IsNull(automaticRange.Cells(1, 1).Value2) Or IsEmpty(automaticRange.Cells(1, 1).Value2) Then
+        Err.Raise 5, "SqlTable.AutoRange", "The automatic range must have a header row beginning at A1."
+    End If
+    If Len(Trim$(CStr(automaticRange.Cells(1, 1).Value2))) = 0 Then
+        Err.Raise 5, "SqlTable.AutoRange", "The automatic range must have a header row beginning at A1."
+    End If
+
+    Dim headerColumn As Long
+    For headerColumn = 1 To automaticRange.Columns.Count
+        If IsError(automaticRange.Cells(1, headerColumn).Value2) Or IsNull(automaticRange.Cells(1, headerColumn).Value2) Or IsEmpty(automaticRange.Cells(1, headerColumn).Value2) Then
+            Err.Raise 5, "SqlTable.AutoRange", "Header row contains an invalid title at column " & headerColumn & "."
+        End If
+        If Len(Trim$(CStr(automaticRange.Cells(1, headerColumn).Value2))) = 0 Then
+            Err.Raise 5, "SqlTable.AutoRange", "Header row contains an empty title at column " & headerColumn & "."
+        End If
+    Next headerColumn
+
+    Set AutoRange = OpenRange(automaticRange)
+    Exit Function
+
+ErrorHandler:
+    Err.Raise Err.Number, "SqlTable.AutoRange", Err.Description
+End Function
+
 Public Function OpenArray(ByRef sourceArray As Variant) As SqlTable
     On Error GoTo ErrorHandler
 

@@ -21,11 +21,14 @@ Private mColumnCount As Long
 Private mSelectFields As Collection
 Private mSelectAliases As Collection
 Private mSelectAliasIndex As Object
+Private mComputedExpressions As Collection
+Private mComputedAliases As Collection
 Private mWhereFields As Collection
 Private mWhereOperators As Collection
 Private mWhereValues As Collection
 Private mWhereTypes As Collection
 Private mWhereIndexes As Collection
+Private mWhereTokens As Collection
 Private mOrderFields As Collection
 Private mOrderDirections As Collection
 Private mOrderTypes As Collection
@@ -47,11 +50,14 @@ Private Sub Class_Initialize()
     Set mSelectAliases = New Collection
     Set mSelectAliasIndex = CreateObject("Scripting.Dictionary")
     mSelectAliasIndex.CompareMode = vbTextCompare
+    Set mComputedExpressions = New Collection
+    Set mComputedAliases = New Collection
     Set mWhereFields = New Collection
     Set mWhereOperators = New Collection
     Set mWhereValues = New Collection
     Set mWhereTypes = New Collection
     Set mWhereIndexes = New Collection
+    Set mWhereTokens = New Collection
     Set mOrderFields = New Collection
     Set mOrderDirections = New Collection
     Set mOrderTypes = New Collection
@@ -149,6 +155,25 @@ Public Function SelectAll() As SqlQuery
     Exit Function
 ErrorHandler:
     Err.Raise Err.Number, "SqlQuery.SelectAll", Err.Description
+End Function
+
+Public Function SelectComputed(ByVal expression As String, ByVal aliasName As String) As SqlQuery
+    On Error GoTo ErrorHandler
+    expression = Trim$(expression)
+    aliasName = Trim$(aliasName)
+    If Len(expression) = 0 Or Len(aliasName) = 0 Then Err.Raise 5, "SqlQuery.SelectComputed", "Expression and alias are required."
+    If mSelectAliasIndex.Exists(aliasName) Then Err.Raise 5, "SqlQuery.SelectComputed", "Duplicate SELECT alias: " & aliasName
+    mSelectAliasIndex.Add aliasName, True
+    mComputedExpressions.Add expression
+    mComputedAliases.Add aliasName
+    Set SelectComputed = Me
+    Exit Function
+ErrorHandler:
+    Err.Raise Err.Number, "SqlQuery.SelectComputed", Err.Description
+End Function
+
+Public Function AddComputed(ByVal expression As String, ByVal aliasName As String) As SqlQuery
+    Set AddComputed = SelectComputed(expression, aliasName)
 End Function
 
 Public Function GroupBy(ParamArray fields() As Variant) As SqlQuery
@@ -366,6 +391,49 @@ ErrorHandler:
     Err.Raise Err.Number, "SqlQuery.AndWhere", Err.Description
 End Function
 
+Public Function OrWhere(ByVal field As Variant, ByVal comparisonOperator As String, ByVal expectedValue As Variant) As SqlQuery
+    On Error GoTo ErrorHandler
+    AddLogicalToken "OR"
+    AddWhere field, comparisonOperator, expectedValue, "AUTO"
+    Set OrWhere = Me
+    Exit Function
+ErrorHandler:
+    Err.Raise Err.Number, "SqlQuery.OrWhere", Err.Description
+End Function
+
+Public Function NotWhere(ByVal field As Variant, ByVal comparisonOperator As String, ByVal expectedValue As Variant) As SqlQuery
+    On Error GoTo ErrorHandler
+    AddLogicalToken "NOT"
+    AddWhere field, comparisonOperator, expectedValue, "AUTO"
+    Set NotWhere = Me
+    Exit Function
+ErrorHandler:
+    Err.Raise Err.Number, "SqlQuery.NotWhere", Err.Description
+End Function
+
+Public Function OrWhereTyped(ByVal field As Variant, ByVal comparisonOperator As String, ByVal expectedValue As Variant, ByVal valueType As String) As SqlQuery
+    AddLogicalToken "OR"
+    AddWhere field, comparisonOperator, expectedValue, valueType
+    Set OrWhereTyped = Me
+End Function
+
+Public Function NotWhereTyped(ByVal field As Variant, ByVal comparisonOperator As String, ByVal expectedValue As Variant, ByVal valueType As String) As SqlQuery
+    AddLogicalToken "NOT"
+    AddWhere field, comparisonOperator, expectedValue, valueType
+    Set NotWhereTyped = Me
+End Function
+
+Public Function BeginGroup() As SqlQuery
+    AddLogicalToken "("
+    Set BeginGroup = Me
+End Function
+
+Public Function EndGroup() As SqlQuery
+    If mWhereTokens.Count = 0 Then Err.Raise 5, "SqlQuery.EndGroup", "No open filter group."
+    mWhereTokens.Add ")"
+    Set EndGroup = Me
+End Function
+
 Public Function AndWhereTyped(ByVal field As Variant, ByVal comparisonOperator As String, ByVal expectedValue As Variant, ByVal valueType As String) As SqlQuery
     On Error GoTo ErrorHandler
     AddWhere field, comparisonOperator, expectedValue, valueType
@@ -451,7 +519,7 @@ End Function
 Public Function OrderBy(ByVal field As Variant, Optional ByVal direction As String = "ASC") As SqlQuery
     On Error GoTo ErrorHandler
 
-    ResolveColumn field
+    ResolveOrderColumn field
     direction = UCase$(Trim$(direction))
     If direction <> "ASC" And direction <> "DESC" Then Err.Raise 5, "SqlQuery.OrderBy", "Direction must be ASC or DESC."
     mOrderFields.Add field
@@ -468,7 +536,7 @@ End Function
 Public Function OrderByTyped(ByVal field As Variant, Optional ByVal direction As String = "ASC", Optional ByVal valueType As String = "AUTO") As SqlQuery
     On Error GoTo ErrorHandler
 
-    ResolveColumn field
+    ResolveOrderColumn field
     direction = UCase$(Trim$(direction))
     If direction <> "ASC" And direction <> "DESC" Then Err.Raise 5, "SqlQuery.OrderByTyped", "Direction must be ASC or DESC."
     valueType = NormalizeValueType(valueType)
@@ -746,6 +814,7 @@ Public Function ToArray() As Variant
     Dim selectedCount As Long
     selectedCount = mSelectFields.Count
     If selectedCount = 0 Then selectedCount = mColumnCount
+    selectedCount = selectedCount + mComputedExpressions.Count
 
     Dim selectedColumns() As Long
     Dim outputHeaders() As String
@@ -764,6 +833,9 @@ Public Function ToArray() As Variant
     ReDim result(1 To matchingRows + 1, 1 To selectedCount)
     Dim outputColumn As Long
     Dim outputRow As Long
+    Dim sourceSelectionCount As Long
+    sourceSelectionCount = mSelectFields.Count
+    If sourceSelectionCount = 0 Then sourceSelectionCount = mColumnCount
     For outputColumn = 1 To selectedCount
         result(1, outputColumn) = outputHeaders(outputColumn)
     Next outputColumn
@@ -772,7 +844,11 @@ Public Function ToArray() As Variant
     For outputRow = 1 To matchingRows
         sourceRow = rowNumbers(outputRow)
         For outputColumn = 1 To selectedCount
-            result(outputRow + 1, outputColumn) = mSource(LBound(mSource, 1) + sourceRow - 1, LBound(mSource, 2) + selectedColumns(outputColumn) - 1)
+            If outputColumn <= sourceSelectionCount Then
+                result(outputRow + 1, outputColumn) = mSource(LBound(mSource, 1) + sourceRow - 1, LBound(mSource, 2) + selectedColumns(outputColumn) - 1)
+            Else
+                result(outputRow + 1, outputColumn) = EvaluateComputed(mComputedExpressions(outputColumn - sourceSelectionCount), sourceRow)
+            End If
         Next outputColumn
     Next outputRow
 
@@ -828,7 +904,85 @@ Private Function BuildAggregateResult() As Variant
             result(outputRow + 1, mGroupFields.Count + item) = CalculateAggregate(mAggregateFunctions(item), mAggregateFields(item), mAggregateTypes(item), groupValues)
         Next item
     Next groupKey
+    ApplyAggregateResultOperations result, outputColumns
     BuildAggregateResult = result
+End Function
+
+Private Sub ApplyAggregateResultOperations(ByRef result() As Variant, ByVal columnCount As Long)
+    Dim dataRows As Long
+    dataRows = UBound(result, 1) - 1
+    If dataRows <= 0 Then Exit Sub
+
+    If mOrderFields.Count > 0 Then SortAggregateRows result, dataRows, columnCount
+    If mDistinct Then dataRows = DistinctAggregateRows(result, dataRows, columnCount)
+
+    Dim startRow As Long
+    Dim finishRow As Long
+    startRow = mOffset + 1
+    If startRow > dataRows + 1 Then startRow = dataRows + 1
+    finishRow = dataRows
+    If mLimit >= 0 And finishRow > startRow - 1 + mLimit Then finishRow = startRow - 1 + mLimit
+
+    If startRow > 1 Or finishRow < dataRows Then
+        Dim paged() As Variant
+        Dim rowNumber As Long, columnNumber As Long, outputRow As Long
+        ReDim paged(1 To finishRow - startRow + 2, 1 To columnCount)
+        For columnNumber = 1 To columnCount: paged(1, columnNumber) = result(1, columnNumber): Next columnNumber
+        For rowNumber = startRow To finishRow
+            outputRow = outputRow + 1
+            For columnNumber = 1 To columnCount
+                paged(outputRow + 1, columnNumber) = result(rowNumber + 1, columnNumber)
+            Next columnNumber
+        Next rowNumber
+        result = paged
+    End If
+End Sub
+
+Private Sub SortAggregateRows(ByRef result() As Variant, ByVal dataRows As Long, ByVal columnCount As Long)
+    Dim i As Long, j As Long, keyColumn As Long, comparison As Long
+    Dim temporary As Variant
+    For i = 2 To dataRows
+        For j = i + 1 To dataRows + 1
+            If AggregateRowsCompare(result, i, j, comparison) Then
+                For keyColumn = 1 To columnCount
+                    temporary = result(i, keyColumn): result(i, keyColumn) = result(j, keyColumn): result(j, keyColumn) = temporary
+                Next keyColumn
+            End If
+        Next j
+    Next i
+End Sub
+
+Private Function AggregateRowsCompare(ByRef result() As Variant, ByVal leftRow As Long, ByVal rightRow As Long, ByRef finalComparison As Long) As Boolean
+    Dim item As Long, leftColumn As Long, rightColumn As Long
+    For item = 1 To mOrderFields.Count
+        leftColumn = ResolveAggregateOutputColumn(mOrderFields(item), result)
+        rightColumn = leftColumn
+        finalComparison = CompareValues(result(leftRow, leftColumn), result(rightRow, rightColumn))
+        If mOrderDirections(item) = "DESC" Then finalComparison = -finalComparison
+        If finalComparison <> 0 Then AggregateRowsCompare = (finalComparison > 0): Exit Function
+    Next item
+End Function
+
+Private Function ResolveAggregateOutputColumn(ByVal field As Variant, ByRef result() As Variant) As Long
+    Dim columnNumber As Long
+    For columnNumber = 1 To UBound(result, 2)
+        If LCase$(CStr(result(1, columnNumber))) = LCase$(CStr(field)) Then ResolveAggregateOutputColumn = columnNumber: Exit Function
+    Next columnNumber
+    Err.Raise 5, "SqlQuery.ResolveAggregateOutputColumn", "Unknown aggregate output column: " & CStr(field)
+End Function
+
+Private Function DistinctAggregateRows(ByRef result() As Variant, ByVal dataRows As Long, ByVal columnCount As Long) As Long
+    Dim seen As Object: Set seen = CreateObject("Scripting.Dictionary")
+    Dim rowNumber As Long, columnNumber As Long, writeRow As Long, key As String
+    For rowNumber = 2 To dataRows + 1
+        key = ""
+        For columnNumber = 1 To columnCount: key = key & EncodeDistinctValue(result(rowNumber, columnNumber)): Next columnNumber
+        If Not seen.Exists(key) Then
+            seen.Add key, True: writeRow = writeRow + 1
+            For columnNumber = 1 To columnCount: result(writeRow + 1, columnNumber) = result(rowNumber, columnNumber): Next columnNumber
+        End If
+    Next rowNumber
+    DistinctAggregateRows = writeRow
 End Function
 
 Private Sub ValidateAggregateSelection()
@@ -987,6 +1141,9 @@ ErrorHandler:
 End Sub
 
 Private Sub AddWhere(ByVal field As Variant, ByVal comparisonOperator As String, ByVal expectedValue As Variant, ByVal valueType As String)
+    If mWhereTokens.Count > 0 Then
+        If IsArray(mWhereTokens(mWhereTokens.Count)) Or IsQueryToken(mWhereTokens.Count, ")") Then mWhereTokens.Add "AND"
+    End If
     ResolveColumn field
     comparisonOperator = UCase$(Trim$(comparisonOperator))
     Select Case comparisonOperator
@@ -999,6 +1156,24 @@ Private Sub AddWhere(ByVal field As Variant, ByVal comparisonOperator As String,
     mWhereValues.Add expectedValue
     mWhereTypes.Add valueType
     mWhereIndexes.Add ""
+    Dim predicate(0 To 4) As Variant
+    predicate(0) = field
+    predicate(1) = comparisonOperator
+    predicate(2) = expectedValue
+    predicate(3) = valueType
+    predicate(4) = mWhereFields.Count
+    mWhereTokens.Add predicate
+End Sub
+
+Private Sub AddLogicalToken(ByVal token As String)
+    token = UCase$(Trim$(token))
+    If token = "(" And mWhereTokens.Count > 0 Then
+        If IsArray(mWhereTokens(mWhereTokens.Count)) Or IsQueryToken(mWhereTokens.Count, ")") Then mWhereTokens.Add "AND"
+    End If
+    If token = "OR" Or token = "AND" Then
+        If mWhereTokens.Count = 0 Then Err.Raise 5, "SqlQuery.AddLogicalToken", "A logical operator requires a previous filter."
+    End If
+    mWhereTokens.Add token
 End Sub
 
 Private Sub JoinSource(ByVal rightSource As Variant, ByVal leftField As Variant, ByVal rightField As Variant, ByVal keyType As String, ByVal preserveLeft As Boolean, ByVal rightAlias As String)
@@ -1006,10 +1181,10 @@ Private Sub JoinSource(ByVal rightSource As Variant, ByVal leftField As Variant,
     rightArray = GetJoinSourceArray(rightSource)
     keyType = NormalizeValueType(keyType)
 
-    Dim leftColumn As Long
-    Dim rightColumn As Long
-    leftColumn = ResolveColumn(leftField)
-    rightColumn = ResolveArrayColumn(rightArray, rightField)
+    Dim leftColumns() As Long
+    Dim rightColumnsKey() As Long
+    Dim keyCount As Long
+    BuildJoinColumns leftField, rightField, rightArray, leftColumns, rightColumnsKey, keyCount
 
     Dim rightRows As Long, rightColumns As Long
     rightRows = UBound(rightArray, 1) - LBound(rightArray, 1) + 1
@@ -1026,7 +1201,7 @@ Private Sub JoinSource(ByVal rightSource As Variant, ByVal leftField As Variant,
     Dim rightRow As Long
     Dim joinKey As String
     For rightRow = 2 To rightRows
-        If TryBuildJoinKey(GetArrayValue(rightArray, rightRow, rightColumn), keyType, 0, joinKey) Then
+        If TryBuildCompositeJoinKey(rightArray, rightRow, rightColumnsKey, keyCount, keyType, 0, joinKey) Then
             If Not rightLookup.Exists(joinKey) Then
                 Dim rowMatches As Collection
                 Set rowMatches = New Collection
@@ -1046,7 +1221,7 @@ Private Sub JoinSource(ByVal rightSource As Variant, ByVal leftField As Variant,
     Dim matchItem As Long
     For leftRow = 2 To mRowCount
         joinKey = ""
-        If TryBuildJoinKey(GetSourceValue(leftRow, leftField), keyType, leftRow, joinKey) Then
+        If TryBuildSourceCompositeJoinKey(leftRow, leftColumns, keyCount, keyType, joinKey) Then
             If rightLookup.Exists(joinKey) Then Set matches = rightLookup(joinKey) Else Set matches = Nothing
         Else
             Set matches = Nothing
@@ -1085,6 +1260,52 @@ Private Sub JoinSource(ByVal rightSource As Variant, ByVal leftField As Variant,
 
     LoadArray result
 End Sub
+
+Private Sub BuildJoinColumns(ByVal leftField As Variant, ByVal rightField As Variant, _
+                             ByRef rightArray As Variant, ByRef leftColumns() As Long, _
+                             ByRef rightColumns() As Long, ByRef keyCount As Long)
+    Dim leftItems As Variant
+    Dim rightItems As Variant
+    If IsArray(leftField) Then leftItems = leftField Else leftItems = Array(leftField)
+    If IsArray(rightField) Then rightItems = rightField Else rightItems = Array(rightField)
+    If UBound(leftItems) - LBound(leftItems) <> UBound(rightItems) - LBound(rightItems) Then _
+        Err.Raise 5, "SqlQuery.BuildJoinColumns", "JOIN key column counts must match."
+    keyCount = UBound(leftItems) - LBound(leftItems) + 1
+    ReDim leftColumns(1 To keyCount)
+    ReDim rightColumns(1 To keyCount)
+    Dim item As Long
+    For item = 1 To keyCount
+        leftColumns(item) = ResolveColumn(leftItems(LBound(leftItems) + item - 1))
+        rightColumns(item) = ResolveArrayColumn(rightArray, rightItems(LBound(rightItems) + item - 1))
+    Next item
+End Sub
+
+Private Function TryBuildCompositeJoinKey(ByRef sourceArray As Variant, ByVal rowNumber As Long, _
+                                           ByRef columns() As Long, ByVal keyCount As Long, _
+                                           ByVal keyType As String, ByVal sourceRow As Long, _
+                                           ByRef joinKey As String) As Boolean
+    Dim item As Long, value As Variant, part As String
+    joinKey = ""
+    For item = 1 To keyCount
+        value = GetArrayValue(sourceArray, rowNumber, columns(item))
+        If Not TryBuildJoinKey(value, keyType, sourceRow, part) Then Exit Function
+        joinKey = joinKey & CStr(Len(part)) & ":" & part & "|"
+    Next item
+    TryBuildCompositeJoinKey = True
+End Function
+
+Private Function TryBuildSourceCompositeJoinKey(ByVal sourceRow As Long, ByRef columns() As Long, _
+                                                 ByVal keyCount As Long, ByVal keyType As String, _
+                                                 ByRef joinKey As String) As Boolean
+    Dim item As Long, value As Variant, part As String
+    joinKey = ""
+    For item = 1 To keyCount
+        value = mSource(LBound(mSource, 1) + sourceRow - 1, LBound(mSource, 2) + columns(item) - 1)
+        If Not TryBuildJoinKey(value, keyType, sourceRow, part) Then Exit Function
+        joinKey = joinKey & CStr(Len(part)) & ":" & part & "|"
+    Next item
+    TryBuildSourceCompositeJoinKey = True
+End Function
 
 Private Function GetJoinSourceArray(ByVal source As Variant) As Variant
     If IsObject(source) Then
@@ -1173,6 +1394,9 @@ Private Function TryBuildJoinKey(ByVal value As Variant, ByVal keyType As String
 End Function
 
 Private Sub AddWhereNull(ByVal field As Variant, ByVal negate As Boolean)
+    If mWhereTokens.Count > 0 Then
+        If IsArray(mWhereTokens(mWhereTokens.Count)) Or IsQueryToken(mWhereTokens.Count, ")") Then mWhereTokens.Add "AND"
+    End If
     ResolveColumn field
     mWhereFields.Add field
     If negate Then
@@ -1183,9 +1407,19 @@ Private Sub AddWhereNull(ByVal field As Variant, ByVal negate As Boolean)
     mWhereValues.Add Empty
     mWhereTypes.Add "AUTO"
     mWhereIndexes.Add ""
+    Dim predicate(0 To 4) As Variant
+    predicate(0) = field
+    predicate(1) = IIf(negate, "IS NOT NULL", "IS NULL")
+    predicate(2) = Empty
+    predicate(3) = "AUTO"
+    predicate(4) = mWhereFields.Count
+    mWhereTokens.Add predicate
 End Sub
 
 Private Sub AddWhereIn(ByVal field As Variant, ByVal values As Variant, ByVal valueType As String)
+    If mWhereTokens.Count > 0 Then
+        If IsArray(mWhereTokens(mWhereTokens.Count)) Or IsQueryToken(mWhereTokens.Count, ")") Then mWhereTokens.Add "AND"
+    End If
     ResolveColumn field
     valueType = NormalizeValueType(valueType)
 
@@ -1234,6 +1468,13 @@ Private Sub AddWhereIn(ByVal field As Variant, ByVal values As Variant, ByVal va
     Else
         mWhereIndexes.Add ""
     End If
+    Dim predicate(0 To 4) As Variant
+    predicate(0) = field
+    predicate(1) = "IN"
+    predicate(2) = valueList
+    predicate(3) = valueType
+    predicate(4) = mWhereFields.Count
+    mWhereTokens.Add predicate
 End Sub
 
 Private Sub AddArrayValues(ByVal target As Collection, ByVal sourceArray As Variant)
@@ -1265,6 +1506,10 @@ Private Sub BuildSelection(ByRef selectedColumns() As Long, ByRef outputHeaders(
             outputHeaders(item) = CStr(mSelectAliases(item))
         Next item
     End If
+    Dim computedIndex As Long
+    For computedIndex = 1 To mComputedExpressions.Count
+        outputHeaders(item + computedIndex - 1) = CStr(mComputedAliases(computedIndex))
+    Next computedIndex
 End Sub
 
 Private Sub ResetSelection()
@@ -1272,7 +1517,31 @@ Private Sub ResetSelection()
     Set mSelectAliases = New Collection
     Set mSelectAliasIndex = CreateObject("Scripting.Dictionary")
     mSelectAliasIndex.CompareMode = vbTextCompare
+    Set mComputedExpressions = New Collection
+    Set mComputedAliases = New Collection
 End Sub
+
+Private Function EvaluateComputed(ByVal expression As String, ByVal sourceRow As Long) As Variant
+    Dim normalized As String
+    Dim fieldName As String
+    Dim value As Variant
+    normalized = UCase$(Trim$(expression))
+    If Left$(normalized, 6) = "UPPER(" And Right$(normalized, 1) = ")" Then
+        fieldName = Trim$(Mid$(expression, 7, Len(expression) - 7))
+        value = GetSourceValue(sourceRow, fieldName)
+        If IsNullLikeValue(value) Then EvaluateComputed = Null Else EvaluateComputed = UCase$(CStr(value))
+    ElseIf Left$(normalized, 6) = "LOWER(" And Right$(normalized, 1) = ")" Then
+        fieldName = Trim$(Mid$(expression, 7, Len(expression) - 7))
+        value = GetSourceValue(sourceRow, fieldName)
+        If IsNullLikeValue(value) Then EvaluateComputed = Null Else EvaluateComputed = LCase$(CStr(value))
+    ElseIf Left$(normalized, 4) = "LEN(" And Right$(normalized, 1) = ")" Then
+        fieldName = Trim$(Mid$(expression, 5, Len(expression) - 5))
+        value = GetSourceValue(sourceRow, fieldName)
+        If IsNullLikeValue(value) Then EvaluateComputed = Null Else EvaluateComputed = Len(CStr(value))
+    Else
+        Err.Raise 5, "SqlQuery.EvaluateComputed", "Unsupported computed expression: " & expression
+    End If
+End Function
 
 Private Function BuildMatchingRows(ByRef rowNumbers() As Long) As Long
     Dim sourceRow As Long
@@ -1288,14 +1557,50 @@ Private Function BuildMatchingRows(ByRef rowNumbers() As Long) As Long
 End Function
 
 Private Function RowMatches(ByVal sourceRow As Long) As Boolean
-    Dim item As Long
-    RowMatches = True
-    For item = 1 To mWhereFields.Count
-        If Not ValuesMatch(GetSourceValue(sourceRow, mWhereFields(item)), mWhereOperators(item), mWhereValues(item), mWhereTypes(item), sourceRow, mWhereIndexes(item)) Then
-            RowMatches = False
-            Exit Function
-        End If
-    Next item
+    If mWhereTokens.Count = 0 Then RowMatches = True: Exit Function
+    Dim position As Long
+    position = 1
+    RowMatches = ParseOrExpression(sourceRow, position)
+End Function
+
+Private Function ParseOrExpression(ByVal sourceRow As Long, ByRef position As Long) As Boolean
+    ParseOrExpression = ParseAndExpression(sourceRow, position)
+    Do While IsQueryToken(position, "OR")
+        position = position + 1
+        ParseOrExpression = ParseOrExpression Or ParseAndExpression(sourceRow, position)
+    Loop
+End Function
+
+Private Function ParseAndExpression(ByVal sourceRow As Long, ByRef position As Long) As Boolean
+    ParseAndExpression = ParseUnaryExpression(sourceRow, position)
+    Do While IsQueryToken(position, "AND")
+        position = position + 1
+        ParseAndExpression = ParseAndExpression And ParseUnaryExpression(sourceRow, position)
+    Loop
+End Function
+
+Private Function ParseUnaryExpression(ByVal sourceRow As Long, ByRef position As Long) As Boolean
+    If IsQueryToken(position, "NOT") Then
+        position = position + 1
+        ParseUnaryExpression = Not ParseUnaryExpression(sourceRow, position)
+    ElseIf IsQueryToken(position, "(") Then
+        position = position + 1
+        ParseUnaryExpression = ParseOrExpression(sourceRow, position)
+        If IsQueryToken(position, ")") Then position = position + 1
+    ElseIf position <= mWhereTokens.Count Then
+        ParseUnaryExpression = QueryPredicateMatches(sourceRow, mWhereTokens(position))
+        position = position + 1
+    End If
+End Function
+
+Private Function IsQueryToken(ByVal position As Long, ByVal expectedToken As String) As Boolean
+    If position < 1 Or position > mWhereTokens.Count Then Exit Function
+    If IsArray(mWhereTokens(position)) Then Exit Function
+    IsQueryToken = (UCase$(CStr(mWhereTokens(position))) = UCase$(expectedToken))
+End Function
+
+Private Function QueryPredicateMatches(ByVal sourceRow As Long, ByVal predicate As Variant) As Boolean
+    QueryPredicateMatches = ValuesMatch(GetSourceValue(sourceRow, predicate(0)), predicate(1), predicate(2), predicate(3), sourceRow, "")
 End Function
 
 Private Function ValuesMatch(ByVal actualValue As Variant, ByVal comparisonOperator As String, ByVal expectedValue As Variant, ByVal valueType As String, ByVal sourceRow As Long, Optional ByVal valueIndex As Variant) As Boolean
@@ -1433,13 +1738,24 @@ End Sub
 Private Function CompareRows(ByVal leftRow As Long, ByVal rightRow As Long) As Long
     Dim item As Long, comparison As Long
     For item = 1 To mOrderFields.Count
-        comparison = CompareOrderValues(GetSourceValue(leftRow, mOrderFields(item)), GetSourceValue(rightRow, mOrderFields(item)), mOrderTypes(item), leftRow, rightRow)
+        comparison = CompareOrderValues(GetOrderValue(leftRow, mOrderFields(item)), GetOrderValue(rightRow, mOrderFields(item)), mOrderTypes(item), leftRow, rightRow)
         If comparison <> 0 Then
             If mOrderDirections(item) = "DESC" Then comparison = -comparison
             CompareRows = comparison
             Exit Function
         End If
     Next item
+End Function
+
+Private Function GetOrderValue(ByVal sourceRow As Long, ByVal field As Variant) As Variant
+    Dim item As Long
+    For item = 1 To mComputedAliases.Count
+        If LCase$(CStr(mComputedAliases(item))) = LCase$(CStr(field)) Then
+            GetOrderValue = EvaluateComputed(mComputedExpressions(item), sourceRow)
+            Exit Function
+        End If
+    Next item
+    GetOrderValue = GetSourceValue(sourceRow, field)
 End Function
 
 Private Function CompareOrderValues(ByVal leftValue As Variant, ByVal rightValue As Variant, ByVal valueType As String, ByVal leftRow As Long, ByVal rightRow As Long) As Long
@@ -1535,6 +1851,28 @@ Private Function ResolveColumn(ByVal field As Variant) As Long
     Else
         Err.Raise 5, "SqlQuery.ResolveColumn", "Unknown column: " & CStr(field)
     End If
+End Function
+
+Private Function ResolveOrderColumn(ByVal field As Variant) As Long
+    On Error GoTo AliasLookup
+    ResolveOrderColumn = ResolveColumn(field)
+    Exit Function
+AliasLookup:
+    Err.Clear
+    Dim item As Long
+    For item = 1 To mAggregateAliases.Count
+        If LCase$(CStr(mAggregateAliases(item))) = LCase$(CStr(field)) Then
+            ResolveOrderColumn = mGroupFields.Count + item
+            Exit Function
+        End If
+    Next item
+    For item = 1 To mComputedAliases.Count
+        If LCase$(CStr(mComputedAliases(item))) = LCase$(CStr(field)) Then
+            ResolveOrderColumn = mColumnCount + item
+            Exit Function
+        End If
+    Next item
+    Err.Raise 5, "SqlQuery.ResolveOrderColumn", "Unknown ORDER BY column: " & CStr(field)
 End Function
 
 Private Sub ParseSelectItem(ByVal itemText As String, ByRef fieldName As String, ByRef aliasName As String)

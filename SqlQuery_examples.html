@@ -353,4 +353,17 @@ Public Sub Method_TypedShortcuts()
     q.WriteToRange Worksheets("Results").Range("A1")
 End Sub</code></pre>
 <h2>Execution order</h2><p><code>JOIN → WHERE → GROUP BY/aggregates → projection → DISTINCT → ORDER BY → LIMIT/OFFSET</code>.</p>
-</body></html>
+<h2 id="advanced-current-api">Current advanced API examples</h2><h3>Logical groups</h3><pre><code>query.BeginGroup
+query.Where "Department", "=", "IT"
+query.OrWhere "Department", "=", "HR"
+query.EndGroup
+query.AndWhere "Active", "=", True</code></pre><h3>Computed columns</h3><pre><code>query.SelectColumns "Name"
+query.SelectComputed "UPPER(Name)", "NameUpper"
+query.AddComputed "LEN(Name)", "NameLength"
+query.OrderBy "NameUpper", "ASC"</code></pre><h3>Composite and chained JOINs</h3><pre><code>query.InnerJoin lookup, Array("Country", "Code"), Array("Country", "Code"), "TEXT", "Lookup"
+query.LeftJoin departments, "Department", "Department", "TEXT", "Dept"
+query.LeftJoin offices, "Dept.Code", "Code", "TEXT", "Office"</code></pre><h3>Aggregate alias ordering</h3><pre><code>query.GroupBy "Department"
+query.CountRows "EmployeeCount"
+query.Sum "Salary", "TotalSalary", "DOUBLE"
+query.OrderBy "TotalSalary", "DESC"
+query.Page 3, 0</code></pre><p>Run <code>RunSqlQueryLogicalTests</code> from <code>SqlQueryTests.bas</code> for the complete current regression set.</p></body></html>

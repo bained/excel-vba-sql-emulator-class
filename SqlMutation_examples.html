@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SqlMutation Examples</title>
+<style>body{font-family:Segoe UI,Arial,sans-serif;line-height:1.5;max-width:1120px;margin:2rem auto;padding:0 1rem;color:#202124}h1,h2{color:#1f4e79}h2{border-bottom:2px solid #d9eaf7;padding-bottom:.35rem;margin-top:2.7rem}nav{background:#eef6fc;border:1px solid #c7ddec;border-radius:6px;padding:1rem 1.4rem}nav ul{columns:2}pre{background:#f5f7f9;border:1px solid #d6dde5;border-radius:5px;padding:1rem;overflow:auto}code{font-family:Consolas,monospace}.note{background:#fff8dc;border-left:4px solid #e4b400;padding:.7rem 1rem}.result{background:#eef8ee;border-left:4px solid #5b9b5b;padding:.7rem 1rem}.small{color:#555;font-size:.92rem}table{border-collapse:collapse;margin:.8rem 0 1.2rem}th,td{border:1px solid #aab7c4;padding:.35rem .65rem;text-align:left}th{background:#d9eaf7}</style>
+</head>
+<body>
+<h1>SqlMutation: INSERT и UPDATE примери</h1>
+<p>Примерите използват <code>Employees!A1:E13</code> и текущия клас <code>SqlMutation</code>.</p>
+<div class="note"><strong>Подготовка:</strong> импортирайте <code>SqlMutation.cls</code> като Class Module. Промените се записват само при <code>Commit</code>.</div>
+<h2 id="contents">Съдържание</h2><nav><ul><li><a href="#data">Source data</a></li><li><a href="#open">OpenRange</a></li><li><a href="#auto">AutoRange</a></li><li><a href="#insert">INSERT</a></li><li><a href="#update">UPDATE</a></li><li><a href="#null">IS NULL</a></li><li><a href="#like">LIKE</a></li><li><a href="#rollback">Rollback</a></li><li><a href="#safe">Safe commit</a></li></ul></nav>
+<h2 id="data">Source data</h2>
+<table><thead><tr><th>EmployeeId</th><th>Name</th><th>Department</th><th>Salary</th><th>Active</th></tr></thead><tbody><tr><td>1</td><td>Ivan</td><td>IT</td><td>3500</td><td>True</td></tr><tr><td>2</td><td>Georgi</td><td>IT</td><td>2500</td><td>True</td></tr><tr><td>3</td><td>Maria</td><td>HR</td><td>4000</td><td>True</td></tr><tr><td>4</td><td>Petar</td><td>Finance</td><td>3000</td><td>True</td></tr><tr><td>5</td><td>Elena</td><td>IT</td><td>4200</td><td>True</td></tr><tr><td>6</td><td>Emilia</td><td>HR</td><td>2800</td><td>False</td></tr><tr><td>7</td><td>Stefan</td><td>IT</td><td>1900</td><td>True</td></tr><tr><td>8</td><td>Emil</td><td>IT</td><td>2100</td><td>True</td></tr><tr><td>9</td><td>Anna</td><td>Legal</td><td>not-a-number</td><td>True</td></tr><tr><td>10</td><td>Ivan</td><td>IT</td><td>3500</td><td>True</td></tr><tr><td>11</td><td>Maria</td><td>HR</td><td>4000</td><td>True</td></tr><tr><td>12</td><td>Viktor</td><td></td><td>2300</td><td>True</td></tr></tbody></table>
+<h2 id="open">1. OpenRange</h2><pre><code>Dim mutation As SqlMutation
+Set mutation = New SqlMutation
+Set mutation = mutation.OpenRange(ThisWorkbook.Worksheets("Employees").Range("A1:E13"))</code></pre><div class="result">Оригиналният диапазон е отворен, но още не е променен.</div>
+<h2 id="auto">2. AutoRange</h2><pre><code>Dim mutation As SqlMutation
+Set mutation = New SqlMutation
+Set mutation = mutation.AutoRange("Employees")
+Debug.Print mutation.RowsAffected</code></pre><p class="small">Преди mutation операцията RowsAffected е 0.</p>
+<h2 id="insert">3. INSERT</h2><pre><code>Dim mutation As SqlMutation
+Dim values As Object
+Set mutation = New SqlMutation
+Set mutation = mutation.AutoRange("Employees")
+Set values = CreateObject("Scripting.Dictionary")
+values("EmployeeId") = 13
+values("Name") = "Nikolay"
+values("Department") = "IT"
+values("Salary") = 3100
+values("Active") = True
+mutation.Insert values
+Debug.Print mutation.RowsAffected       ' 1
+mutation.Commit</code></pre><table><thead><tr><th>EmployeeId</th><th>Name</th><th>Department</th><th>Salary</th><th>Active</th></tr></thead><tbody><tr><td>13</td><td>Nikolay</td><td>IT</td><td>3100</td><td>True</td></tr></tbody></table>
+<h2 id="update">4. UPDATE</h2><pre><code>Dim values As Object
+Set values = CreateObject("Scripting.Dictionary")
+values("Salary") = 3600
+mutation.UpdateWhere "Name", "=", "Ivan", values
+Debug.Print mutation.RowsAffected       ' 2
+mutation.Commit</code></pre><div class="result">И двата реда с Name = Ivan са променени.</div>
+<h2 id="null">5. UPDATE с IS NULL</h2><pre><code>Set values = CreateObject("Scripting.Dictionary")
+values("Department") = "Unknown"
+mutation.UpdateWhere "Department", "IS NULL", Empty, values
+Debug.Print mutation.RowsAffected
+mutation.Commit</code></pre><div class="result">Редът с празен Department е променен.</div>
+<h2 id="like">6. UPDATE с LIKE</h2><pre><code>Set values = CreateObject("Scripting.Dictionary")
+values("Active") = False
+mutation.UpdateWhere "Name", "LIKE", "E*", values
+Debug.Print mutation.RowsAffected
+mutation.Commit</code></pre><div class="result">Elena, Emilia и Emil са маркирани като неактивни.</div>
+<h2 id="delete">7. DELETE</h2><pre><code>Dim mutation As SqlMutation
+Set mutation = New SqlMutation
+Set mutation = mutation.AutoRange("Employees")
+mutation.DeleteWhere "Department", "=", "Legal"
+Debug.Print mutation.RowsAffected       ' 1
+mutation.Commit</code></pre><div class="result">Anna е премахната от in-memory snapshot-а и след Commit worksheet row-ът се изтрива физически, без остатъчен ред.</div>
+<h2 id="truncate">8. TRUNCATE</h2><pre><code>Set mutation = New SqlMutation
+Set mutation = mutation.AutoRange("Employees")
+mutation.Truncate True
+Debug.Print mutation.RowsAffected
+mutation.Commit</code></pre><div class="result">Всички data rows са премахнати, header row е запазен.</div>
+<h2 id="rollback">9. Rollback</h2><pre><code>Set values = CreateObject("Scripting.Dictionary")
+values("Salary") = 9999
+mutation.UpdateWhere "Name", "=", "Ivan", values
+mutation.Rollback
+' Worksheet-ът не е променен.</code></pre><div class="note">Rollback презарежда worksheet range-а и изхвърля in-memory промените.</div>
+<h2 id="builder">10. Mutation builder</h2><pre><code>Dim values As Object
+Set values = CreateObject("Scripting.Dictionary")
+values("Salary") = 3600
+mutation.Where("Department", "=", "IT").AndWhere "Name", "=", "Ivan"
+mutation.NotWhere "Name", "=", "Anna"
+Debug.Print mutation.MatchedCount
+mutation.Update values
+mutation.Commit</code></pre><div class="result">Builder-ът комбинира условията с AND.</div>
+<h2 id="advanced">11. OR, NOT, groups и Preview</h2><pre><code>mutation.BeginGroup
+mutation.Where "Department", "=", "IT"
+mutation.OrWhere "Department", "=", "HR"
+mutation.EndGroup
+mutation.AndWhere "Active", "=", True
+Debug.Print mutation.Count
+result = mutation.Preview()</code></pre><div class="result">Preview връща matched rows с header row, без да променя worksheet-а.</div>
+<h2 id="typed">12. Typed mutation filters</h2><pre><code>mutation.SetConversionPolicy "IGNORE"`r`nmutation.WhereTyped "Salary", ">", "3000", "DOUBLE"`r`nDebug.Print mutation.MatchedCount`r`nmutation.Delete</code></pre><div class="result">Невалидните числови стойности се игнорират при policy IGNORE.</div>`r`n<h2 id="insert-policy">13. INSERT policies</h2><pre><code>mutation.SetInsertPolicy "STRICT"`r`nmutation.RequireInsertColumns "EmployeeId", "Name"`r`nvalues("EmployeeId") = 13`r`nvalues("Name") = "Nikolay"`r`nmutation.Insert values</code></pre><div class="result">STRICT отхвърля unknown keys и липсващи required columns. По подразбиране policy е LENIENT.</div>`r`n<h2 id="safe">11. Безопасен commit workflow</h2><pre><code>mutation.UpdateWhere "Department", "=", "IT", values
+If mutation.RowsAffected &gt; 0 And mutation.RowsAffected &lt;= 10 Then
+    mutation.Commit
+Else
+    mutation.Rollback
+End If</code></pre><p class="small">Проверявайте RowsAffected преди Commit, особено при UPDATE.</p>
+<h2 id="current-mutation-safety">Current mutation safety examples</h2><h3>Validate before commit</h3><pre><code>mutation.UpdateWhere "Department", "=", "IT", values
+If mutation.RowsAffected > 0 And mutation.RowsAffected <= 10 Then
+    mutation.Commit
+Else
+    mutation.Rollback
+End If</code></pre><h3>Inspect failed commits</h3><pre><code>On Error GoTo CommitFailed
+mutation.Commit
+Exit Sub
+CommitFailed:
+log = mutation.GetCommitLog()
+Debug.Print log(UBound(log, 1), 5)
+Debug.Print log(UBound(log, 1), 6)</code></pre><h3>Run the complete suite</h3><pre><code>RunAllSqlMutationTests</code></pre><p>The test suite validates external-change detection, protected-sheet failure handling, backup restore, and failed commit logging.</p></body></html>
