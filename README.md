@@ -92,7 +92,19 @@ mutation.Commit
 
 `OpenRange` remains available for an explicitly controlled range. `Rollback` reloads the original worksheet range and discards uncommitted in-memory changes. `DeleteWhere` removes matching rows from the in-memory snapshot; the worksheet changes only after `Commit`. After a DELETE commit, trailing worksheet rows from the old target range are physically deleted so that stale rows are not left below the compacted result. `SqlMutation` exposes `HasPendingChanges`: it is True after INSERT/UPDATE/DELETE and False after Commit/Rollback. Commit keeps a backup of the original range values and attempts to restore them if the write fails. Commit history is available via `GetCommitLog` and can be cleared with `ClearCommitLog`. The log columns are `Timestamp`, `Worksheet`, `Range`, `RowDelta`, `Status` and `Error`. For multiple conditions use the mutation builder: `mutation.Where("Department", "=", "IT").AndWhere "Salary", ">", 3000`, then inspect `mutation.MatchedCount` and call `mutation.Update values` or `mutation.Delete`. Update/Delete require at least one filter; use `Truncate True` for all data rows. The builder also supports `OrWhere`, `NotWhere`, `BeginGroup`, `EndGroup`, `Count` and `Preview`.
 
-### SqlMutation diagnostics`r`n`r`n```vba`rnmutation.SetConversionPolicy "IGNORE"`r`nmutation.EnableDiagnostics`r`nmutation.WhereTyped "Salary", ">", "3000", "DOUBLE"`r`nDebug.Print mutation.MatchedCount`r`nerrors = mutation.GetConversionErrors()`r`n````r`n`r`n`GetConversionErrors` връща `SourceRow`, `Context`, `ValueType`, `Policy` и `Value`. Изчиства се с `ClearDiagnostics`.`r`n`r`n`SqlTable.FindFirst` returns a late-bound row dictionary. Print a field from the dictionary, not the object itself:
+### SqlMutation diagnostics
+
+```vba
+mutation.SetConversionPolicy "IGNORE"
+mutation.EnableDiagnostics
+mutation.WhereTyped "Salary", ">", "3000", "DOUBLE"
+Debug.Print mutation.MatchedCount
+errors = mutation.GetConversionErrors()
+```
+
+`GetConversionErrors` returns `SourceRow`, `Context`, `ValueType`, `Policy`, and `Value`. Use `ClearDiagnostics` to remove the collected records.
+
+`SqlTable.FindFirst` returns a late-bound row dictionary. Print a field from the dictionary, not the object itself:
 
 ```vba
 Dim row As Object
